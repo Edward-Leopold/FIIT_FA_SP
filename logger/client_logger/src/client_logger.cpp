@@ -59,31 +59,68 @@ client_logger::~client_logger() noexcept
 
 client_logger::refcounted_stream::refcounted_stream(const std::string &path)
 {
-    throw not_implemented("client_logger::refcounted_stream::refcounted_stream(const std::string &path)", "your code should be here...");
+    auto it = _global_streams.find(path);
+    if (it == _global_streams.end()){
+        std::ofstream out;
+        out.open(path);
+        if (out.is_open()) {
+            _global_streams.insert({path, std::make_pair(1, std::move(out))});
+            it = _global_streams.find(path);
+            _stream.first = path;
+            _stream.second = &(it->second.second);
+        } else {
+            throw std::runtime_error("Unable to open file " + path);
+        }
+    } else{
+        _global_streams.at(path).first++;
+        _stream.first = path;
+        _stream.second = &(it->second.second);
+    }
 }
 
 client_logger::refcounted_stream::refcounted_stream(const client_logger::refcounted_stream &oth)
 {
-    throw not_implemented("client_logger::refcounted_stream::refcounted_stream(const client_logger::refcounted_stream &)", "your code should be here...");
+    _stream.first = oth._stream.first;
+    _stream.second = oth._stream.second;
+    _global_streams.at(_stream.first).first++;
 }
 
 client_logger::refcounted_stream &
 client_logger::refcounted_stream::operator=(const client_logger::refcounted_stream &oth)
 {
-    throw not_implemented("client_logger::refcounted_stream & client_logger::refcounted_stream::operator=(const client_logger::refcounted_stream &)", "your code should be here...");
+    if (this != &oth) {
+        _global_streams.at(_stream.first).first--;
+        if (_global_streams.at(_stream.first).first == 0) {
+            _global_streams.at(_stream.first).second.close();
+            _global_streams.erase(_stream.first);
+        }
+
+        _stream.first = oth._stream.first;
+        _stream.second = oth._stream.second;
+        _global_streams.at(_stream.first).first++;
+    }
 }
 
 client_logger::refcounted_stream::refcounted_stream(client_logger::refcounted_stream &&oth) noexcept
 {
-    throw not_implemented("client_logger::refcounted_stream::refcounted_stream(client_logger::refcounted_stream &&) noexcept", "your code should be here...");
+    _stream = std::move(oth._stream);
+    oth._stream = {"", nullptr};
 }
 
 client_logger::refcounted_stream &client_logger::refcounted_stream::operator=(client_logger::refcounted_stream &&oth) noexcept
 {
-    throw not_implemented("client_logger::refcounted_stream &client_logger::refcounted_stream::operator=(client_logger::refcounted_stream &&) noexcept", "your code should be here...");
+    if (this != &oth) {
+        _stream = std::move(oth._stream);
+        oth._stream = {"", nullptr};
+    }
+    return *this;
 }
 
 client_logger::refcounted_stream::~refcounted_stream()
 {
-    throw not_implemented("client_logger::refcounted_stream::~refcounted_stream()", "your code should be here...");
+    _global_streams.at(_stream.first).first--;
+    if (_global_streams.at(_stream.first).first == 0) {
+        _global_streams.at(_stream.first).second.close();
+        _global_streams.erase(_stream.first);
+    }
 }
