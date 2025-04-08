@@ -12,12 +12,52 @@ logger& client_logger::log(
     const std::string &text,
     logger::severity severity) &
 {
-    throw not_implemented("const logger& client_logger::log(const std::string &,logger::severity) const &", "your code should be here...");
+    std::string log_text = make_format(text, severity);
+
+    auto iter = _output_streams.find(severity);
+    if (iter == _output_streams.end()) {
+        throw std::runtime_error("No such severity");
+    }
+
+    const auto &file_streams = iter->second.first;
+    const bool is_write_to_console = iter->second.second;
+    for (const refcounted_stream& stream : file_streams) {
+        *(stream._stream.second) << log_text << std::endl;
+    }
+    if (is_write_to_console) {
+        std::cout << log_text << std::endl;
+    }
+
+    return *this;
 }
 
 std::string client_logger::make_format(const std::string &message, severity sev) const
 {
-    throw not_implemented("std::string client_logger::make_format(const std::string &, severity) const", "your code should be here...");
+    std::stringstream res;
+    for (size_t i = 0; i < _format.size(); ++i) {
+        if (_format[i] == '%' && i + 1 < _format.size()) {
+            switch (char_to_flag(_format[i + 1])) {
+                case flag::DATE:
+                    res << current_date_to_string();
+                    break;
+                case flag::TIME:
+                    res << current_time_to_string();
+                    break;
+                case flag::SEVERITY:
+                    res << severity_to_string(sev);
+                    break;
+                case flag::MESSAGE:
+                    res << message;
+                    break;
+                default:
+                    break;
+            }
+        } else {
+            res << _format[i];
+        }
+    }
+
+    return res.str();
 }
 
 client_logger::client_logger(
