@@ -23,61 +23,61 @@ std::string client_logger::make_format(const std::string &message, severity sev)
 client_logger::client_logger(
         const std::unordered_map<logger::severity, std::pair<std::forward_list<refcounted_stream>, bool>> &streams,
         std::string format)
-{
-
-}
+        : _output_streams(streams), _format(std::move(format))
+{}
 
 client_logger::flag client_logger::char_to_flag(char c) noexcept
 {
-    throw not_implemented("client_logger::flag client_logger::char_to_flag(char) noexcept", "your code should be here...");
+    // { DATE, TIME, SEVERITY, MESSAGE, NO_FLAG };
+    switch (c) {
+        case 'd':
+            return flag::DATE;
+        case 't':
+            return flag::TIME;
+        case 's':
+            return flag::SEVERITY;
+        case 'm':
+            return flag::MESSAGE;
+        default:
+            return flag::NO_FLAG;
+    }
 }
 
-client_logger::client_logger(const client_logger &other)
-{
-    throw not_implemented("client_logger::client_logger(const client_logger &other)", "your code should be here...");
-}
+client_logger::client_logger(const client_logger &other) : _output_streams(other._output_streams), _format(other._format){}
 
 client_logger &client_logger::operator=(const client_logger &other)
 {
-    throw not_implemented("client_logger::flag client_logger::char_to_flag(char) noexcept", "your code should be here...");
+    if (this != &other) {
+        _format = other._format;
+        _output_streams = other._output_streams;
+    }
+    return *this;
 }
 
 client_logger::client_logger(client_logger &&other) noexcept
 {
-    throw not_implemented("client_logger &client_logger::operator=(const client_logger &other)", "your code should be here...");
+    _format = std::move(other._format);
+    _output_streams = std::move(other._output_streams);
 }
 
 client_logger &client_logger::operator=(client_logger &&other) noexcept
 {
-    throw not_implemented("client_logger &client_logger::operator=(client_logger &&other) noexcept", "your code should be here...");
+    if (this != &other) {
+        _format = std::move(other._format);
+        _output_streams = std::move(other._output_streams);
+    }
+    return *this;
 }
 
 client_logger::~client_logger() noexcept
 {
-    throw not_implemented("client_logger::~client_logger() noexcept", "your code should be here...");
+    // seems it's okay
 }
 
 client_logger::refcounted_stream::refcounted_stream(const std::string &path)
 {
     _stream.first = path;
     _stream.second = nullptr;
-    // auto it = _global_streams.find(path);
-    // if (it == _global_streams.end()){
-    //     std::ofstream out;
-    //     out.open(path);
-    //     if (out.is_open()) {
-    //         _global_streams.insert({path, std::make_pair(1, std::move(out))});
-    //         it = _global_streams.find(path);
-    //         _stream.first = path;
-    //         _stream.second = &(it->second.second);
-    //     } else {
-    //         throw std::runtime_error("Unable to open file " + path);
-    //     }
-    // } else{
-    //     _global_streams.at(path).first++;
-    //     _stream.first = path;
-    //     _stream.second = &(it->second.second);
-    // }
 }
 
 client_logger::refcounted_stream::refcounted_stream(const client_logger::refcounted_stream &oth)
@@ -99,9 +99,6 @@ client_logger::refcounted_stream::refcounted_stream(const client_logger::refcoun
         _stream.first = oth._stream.first;
         _stream.second = &(it->second.second);
     }
-    // _stream.first = oth._stream.first;
-    // _stream.second = oth._stream.second;
-    // _global_streams.at(_stream.first).first++;
 }
 
 client_logger::refcounted_stream &
@@ -118,6 +115,7 @@ client_logger::refcounted_stream::operator=(const client_logger::refcounted_stre
         _stream.second = oth._stream.second;
         _global_streams.at(_stream.first).first++;
     }
+    return *this;
 }
 
 client_logger::refcounted_stream::refcounted_stream(client_logger::refcounted_stream &&oth) noexcept
