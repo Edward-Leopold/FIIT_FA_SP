@@ -24,7 +24,7 @@ client_logger::client_logger(
         const std::unordered_map<logger::severity, std::pair<std::forward_list<refcounted_stream>, bool>> &streams,
         std::string format)
 {
-    throw not_implemented("client_logger::client_logger(const std::unordered_map<logger::severity, std::pair<std::forward_list<refcounted_stream>, bool>> &, std::string)", "your code should be here...");
+
 }
 
 client_logger::flag client_logger::char_to_flag(char c) noexcept
@@ -59,30 +59,49 @@ client_logger::~client_logger() noexcept
 
 client_logger::refcounted_stream::refcounted_stream(const std::string &path)
 {
-    auto it = _global_streams.find(path);
-    if (it == _global_streams.end()){
-        std::ofstream out;
-        out.open(path);
-        if (out.is_open()) {
-            _global_streams.insert({path, std::make_pair(1, std::move(out))});
-            it = _global_streams.find(path);
-            _stream.first = path;
-            _stream.second = &(it->second.second);
-        } else {
-            throw std::runtime_error("Unable to open file " + path);
-        }
-    } else{
-        _global_streams.at(path).first++;
-        _stream.first = path;
-        _stream.second = &(it->second.second);
-    }
+    _stream.first = path;
+    _stream.second = nullptr;
+    // auto it = _global_streams.find(path);
+    // if (it == _global_streams.end()){
+    //     std::ofstream out;
+    //     out.open(path);
+    //     if (out.is_open()) {
+    //         _global_streams.insert({path, std::make_pair(1, std::move(out))});
+    //         it = _global_streams.find(path);
+    //         _stream.first = path;
+    //         _stream.second = &(it->second.second);
+    //     } else {
+    //         throw std::runtime_error("Unable to open file " + path);
+    //     }
+    // } else{
+    //     _global_streams.at(path).first++;
+    //     _stream.first = path;
+    //     _stream.second = &(it->second.second);
+    // }
 }
 
 client_logger::refcounted_stream::refcounted_stream(const client_logger::refcounted_stream &oth)
 {
-    _stream.first = oth._stream.first;
-    _stream.second = oth._stream.second;
-    _global_streams.at(_stream.first).first++;
+    auto it = _global_streams.find(oth._stream.first);
+    if (it == _global_streams.end()){
+        std::ofstream out;
+        out.open(oth._stream.first);
+        if (out.is_open()) {
+            _global_streams.insert({oth._stream.first, std::make_pair(1, std::move(out))});
+            it = _global_streams.find(oth._stream.first);
+            _stream.first = oth._stream.first;
+            _stream.second = &(it->second.second);
+        } else {
+            throw std::runtime_error("Unable to open file " + oth._stream.first);
+        }
+    } else{
+        _global_streams.at(oth._stream.first).first++;
+        _stream.first = oth._stream.first;
+        _stream.second = &(it->second.second);
+    }
+    // _stream.first = oth._stream.first;
+    // _stream.second = oth._stream.second;
+    // _global_streams.at(_stream.first).first++;
 }
 
 client_logger::refcounted_stream &
