@@ -4,21 +4,44 @@
 #include "../include/client_logger_builder.h"
 #include <not_implemented.h>
 
-using namespace nlohmann;
-
 logger_builder& client_logger_builder::add_file_stream(
     std::string const &stream_file_path,
     logger::severity severity) &
 {
+
+    std::filesystem::path new_file_path;
+    try {
+        new_file_path = std::filesystem::canonical(stream_file_path);
+    } catch (const std::filesystem::filesystem_error& e) {
+        throw std::runtime_error("Canonical path for: " + stream_file_path + " threw exception:\n" + e.what() + "\n");
+    }
+
+
     auto iter = _output_streams.find(severity);
     if (iter == _output_streams.end()) {
-        std::forward_list<client_logger::refcounted_stream> list{client_logger::refcounted_stream(stream_file_path)};
+        std::forward_list<client_logger::refcounted_stream> list;
+        list.emplace_front(stream_file_path);
         _output_streams[severity] = std::make_pair(std::move(list), false);
     } else {
-        iter->second.first.push_front(client_logger::refcounted_stream(stream_file_path));
+
+
+        for (const auto& file_stream : iter->second.first) {
+            // try {
+                std::filesystem::path existing_file_path = std::filesystem::canonical(file_stream._stream.first);
+                if (existing_file_path == new_file_path) {
+                    return *this;
+                }
+            // } catch (const std::filesystem::filesystem_error& e) {
+            //     throw std::runtime_error("error in canonical");
+            // }
+        }
+
+        iter->second.first.emplace_front(stream_file_path);
     }
     return *this;
 }
+
+using namespace nlohmann;
 
 logger_builder& client_logger_builder::add_console_stream(
     logger::severity severity) &
