@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
                 add_console_stream(logger::severity::trace).
                 set_format("[%d %t][%s] %m");
 
-        // builder.transform_with_configuration("../tests/set.json", "/log");
+        builder.transform_with_configuration("../tests/set.json", "log");
 
         std::unique_ptr<logger> log(builder.build());
 
@@ -28,6 +28,9 @@ int main(int argc, char *argv[])
         std::unique_ptr<logger> logger2(builder.build());
 
         logger2->trace("From second logger");
+        logger2->trace("Another message from second logger");
+
+        logger2->error("ERROR MSG second logger");
 
         return RUN_ALL_TESTS();
     } catch (const std::exception &ex) {

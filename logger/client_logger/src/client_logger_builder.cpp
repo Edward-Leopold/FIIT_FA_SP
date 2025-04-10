@@ -44,6 +44,18 @@ logger_builder& client_logger_builder::add_console_stream(
     return *this;
 }
 
+logger_builder& client_logger_builder::clear() &
+{
+    _format = "%m";
+    _output_streams.clear();
+    return *this;
+}
+
+logger *client_logger_builder::build() const
+{
+    return new client_logger(_output_streams, _format);
+}
+
 logger_builder& client_logger_builder::transform_with_configuration(
     std::string const &configuration_file_path,
     std::string const &configuration_path) &
@@ -58,17 +70,17 @@ logger_builder& client_logger_builder::transform_with_configuration(
         throw std::runtime_error("Failed to parse configuration file");
     }
 
-    json::json_pointer config_path(configuration_path);
-    if (config.contains(config_path)) {
-        json& settings = config[config_path];
+    // json::json_pointer config_path(configuration_path);
+    if (config.contains(configuration_path)) {
+        json& settings = config[configuration_path];
 
         // { trace, debug, information, warning, error, critical };
-        if (settings.contains("trace")) parse_severity(logger::severity::information, settings["trace"]);
-        if (settings.contains("debug")) parse_severity(logger::severity::information, settings["debug"]);
+        if (settings.contains("trace")) parse_severity(logger::severity::trace, settings["trace"]);
+        if (settings.contains("debug")) parse_severity(logger::severity::debug, settings["debug"]);
         if (settings.contains("information")) parse_severity(logger::severity::information, settings["information"]);
-        if (settings.contains("warning")) parse_severity(logger::severity::information, settings["warning"]);
-        if (settings.contains("error")) parse_severity(logger::severity::information, settings["error"]);
-        if (settings.contains("critical")) parse_severity(logger::severity::information, settings["critical"]);
+        if (settings.contains("warning")) parse_severity(logger::severity::warning, settings["warning"]);
+        if (settings.contains("error")) parse_severity(logger::severity::error, settings["error"]);
+        if (settings.contains("critical")) parse_severity(logger::severity::critical, settings["critical"]);
 
         if (settings.contains("format")) {
             _format = settings["format"].get<std::string>();
@@ -78,18 +90,6 @@ logger_builder& client_logger_builder::transform_with_configuration(
     }
 
     return *this;
-}
-
-logger_builder& client_logger_builder::clear() &
-{
-    _format = "%m";
-    _output_streams.clear();
-    return *this;
-}
-
-logger *client_logger_builder::build() const
-{
-    return new client_logger(_output_streams, _format);
 }
 
 logger_builder& client_logger_builder::set_format(const std::string &format) &
@@ -113,7 +113,7 @@ void client_logger_builder::parse_severity(logger::severity sev, nlohmann::json&
         add_file_stream(path, sev);
     }
 
-    if (j['console'].get<bool>()) {
+    if (j["console"].get<bool>()) {
         add_console_stream(sev);
     }
 }

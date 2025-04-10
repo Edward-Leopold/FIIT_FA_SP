@@ -3,7 +3,7 @@
     "format": "format from json: %m, date: %d %t",
     "error" : {
       "console": true,
-      "file_paths": ["b.txt"]
+      "file_paths": ["b.txt", "c.txt", "b.txt"]
     }
   }
 }
