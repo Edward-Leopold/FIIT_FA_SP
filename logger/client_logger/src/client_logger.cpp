@@ -52,6 +52,7 @@ std::string client_logger::make_format(const std::string &message, severity sev)
                 default:
                     break;
             }
+            ++i;
         } else {
             res << _format[i];
         }
