@@ -8,22 +8,6 @@ logger_builder& client_logger_builder::add_file_stream(
     std::string const &stream_file_path,
     logger::severity severity) &
 {
-
-    // if (!std::filesystem::exists(stream_file_path)) {
-    //     std::ofstream create_file(stream_file_path);
-    //     if (!create_file) {
-    //         throw std::runtime_error("Unable to create file: " + stream_file_path);
-    //     }
-    // }
-
-    // std::filesystem::path new_file_path;
-    // try {
-    //     new_file_path = std::filesystem::canonical(stream_file_path);
-    // } catch (const std::filesystem::filesystem_error& e) {
-    //     throw std::runtime_error("Canonical path for: " + stream_file_path + " threw exception:\n" + e.what() + "\n");
-    // }
-
-
     auto iter = _output_streams.find(severity);
     if (iter == _output_streams.end()) {
         std::forward_list<client_logger::refcounted_stream> list;
@@ -31,27 +15,13 @@ logger_builder& client_logger_builder::add_file_stream(
         _output_streams[severity] = std::make_pair(std::move(list), false);
     } else {
 
-        // for (const auto& file_stream : iter->second.first) {
-        //     try {
-        //         std::filesystem::path existing_file_path = std::filesystem::canonical(file_stream._stream.first);
-        //         if (existing_file_path == new_file_path) {
-        //             return *this; // файл уже добавлен
-        //         }
-        //     } catch (const std::filesystem::filesystem_error& e) {
-        //         throw std::runtime_error("error in canonical");
-        //     }
-        // }
-        //
-        // iter->second.first.emplace_front(stream_file_path);
-
         auto& streams = iter->second.first;
         bool is_existing = std::any_of(
             streams.begin(),
             streams.end(),
             [&](const client_logger::refcounted_stream &s) {
-                return std::filesystem::absolute(s._stream.first) == std::filesystem::absolute(stream_file_path);;
+                return std::filesystem::weakly_canonical(s._stream.first) == std::filesystem::weakly_canonical(stream_file_path);;
             });
-
 
         if (!is_existing) {
             streams.emplace_front(stream_file_path);
