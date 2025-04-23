@@ -1136,7 +1136,7 @@ template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 size_t binary_search_tree<tkey, tvalue, compare, tag>::prefix_iterator::depth() const noexcept
 {
     size_t depth = 0;
-    for (node* cur = _data; cur != nullptr; cur = cur->parent, ++depth) {}
+    for (node* cur = _data; cur->parent != nullptr; cur = cur->parent, ++depth) {}
     return depth;
 }
 
@@ -1533,7 +1533,7 @@ template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 size_t binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator::depth() const noexcept
 {
     size_t depth = 0;
-    for (node* cur = _data; cur != nullptr; cur = cur->parent, ++depth) {}
+    for (node* cur = _data; cur->parent != nullptr; cur = cur->parent, ++depth) {}
     return depth;
 }
 
@@ -1925,7 +1925,7 @@ template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 size_t binary_search_tree<tkey, tvalue, compare, tag>::postfix_iterator::depth() const noexcept
 {
     size_t depth = 0;
-    for (node* cur = _data; cur != nullptr; cur = cur->parent, ++depth) {}
+    for (node* cur = _data; cur->parent != nullptr; cur = cur->parent, ++depth) {}
     return depth;
 }
 
@@ -2660,10 +2660,9 @@ binary_search_tree<tkey, tvalue, compare, tag>::erase(infix_iterator pos)
 {
     if (pos == end_infix()) return end_infix();
 
+    auto current_node = pos._data;
     auto next = ++pos;
-
-    __detail::bst_impl<tkey, tvalue, compare, tag>::erase(*this, &pos._data);
-
+    __detail::bst_impl<tkey, tvalue, compare, tag>::erase(*this, &current_node);
     return next;
 }
 
@@ -2675,10 +2674,9 @@ binary_search_tree<tkey, tvalue, compare, tag>::erase(infix_const_iterator pos)
 {
     if (pos == end_infix()) return end_infix();
 
+    auto current_node = pos._data;
     auto next = ++pos;
-
-    __detail::bst_impl<tkey, tvalue, compare, tag>::erase(*this, &pos._data);
-
+    __detail::bst_impl<tkey, tvalue, compare, tag>::erase(*this, &current_node);
     return next;
 }
 
@@ -2737,8 +2735,10 @@ binary_search_tree<tkey, tvalue, compare, tag>::end() noexcept
 
     node* cur = _root;
     while (cur->right_subtree != nullptr) cur = cur->right_subtree;
+    auto it = infix_iterator(cur);
+    ++it;
 
-    return infix_iterator(cur);
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -2761,8 +2761,10 @@ binary_search_tree<tkey, tvalue, compare, tag>::end() const noexcept
 
     node* cur = _root;
     while (cur->right_subtree != nullptr) cur = cur->right_subtree;
+    auto it = infix_const_iterator(cur);
+    ++it;
 
-    return infix_const_iterator(cur);
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -2803,8 +2805,10 @@ binary_search_tree<tkey, tvalue, compare, tag>::rend() noexcept
     while (cur->left_subtree != nullptr){
         cur = cur->left_subtree;
     }
+    auto it = infix_reverse_iterator(cur);
+    ++it;
 
-    return infix_reverse_iterator(cur);
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -2831,8 +2835,10 @@ binary_search_tree<tkey, tvalue, compare, tag>::rend() const noexcept
     while (cur->left_subtree != nullptr){
         cur = cur->left_subtree;
     }
+    auto it = infix_const_reverse_iterator(cur);
+    ++it;
 
-    return infix_const_reverse_iterator(cur);
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -2868,7 +2874,9 @@ binary_search_tree<tkey, tvalue, compare, tag>::end_prefix() noexcept
     if (_root == nullptr) return prefix_iterator(nullptr);
     node* cur = _root;
     while (cur->right_subtree != nullptr) cur = cur->right_subtree;
-    return prefix_iterator(cur);
+    auto it = prefix_iterator(cur);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -2886,7 +2894,9 @@ binary_search_tree<tkey, tvalue, compare, tag>::end_prefix() const noexcept
     if (_root == nullptr) return prefix_const_iterator(nullptr);
     node* cur = _root;
     while (cur->right_subtree != nullptr) cur = cur->right_subtree;
-    return prefix_const_iterator(cur);
+    auto it = prefix_const_iterator(cur);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -2918,7 +2928,9 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::prefix_reverse_iterator
 binary_search_tree<tkey, tvalue, compare, tag>::rend_prefix() noexcept
 {
     if (_root == nullptr) return prefix_reverse_iterator(nullptr);
-    return prefix_reverse_iterator(_root);
+    auto it = prefix_reverse_iterator(_root);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -2936,7 +2948,9 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::prefix_const_reverse_it
 binary_search_tree<tkey, tvalue, compare, tag>::rend_prefix() const noexcept
 {
     if (_root == nullptr) return prefix_const_reverse_iterator(nullptr);
-    return prefix_const_reverse_iterator(_root);
+    auto it = prefix_const_reverse_iterator(_root);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -3067,7 +3081,9 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::postfix_iterator
 binary_search_tree<tkey, tvalue, compare, tag>::end_postfix() noexcept
 {
     if (_root == nullptr) return postfix_iterator(nullptr);
-    return postfix_iterator(_root);
+    auto it = postfix_iterator(_root);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -3092,7 +3108,9 @@ typename binary_search_tree<tkey, tvalue, compare, tag>::postfix_const_iterator
 binary_search_tree<tkey, tvalue, compare, tag>::end_postfix() const noexcept
 {
     if (_root == nullptr) return postfix_const_iterator(nullptr);
-    return postfix_const_iterator(_root);
+    auto it = postfix_const_iterator(_root);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -3131,7 +3149,9 @@ binary_search_tree<tkey, tvalue, compare, tag>::rend_postfix() noexcept
             cur = cur->right_subtree;
         }
     }
-    return postfix_reverse_iterator(cur);
+    auto it = postfix_reverse_iterator(cur);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -3156,7 +3176,9 @@ binary_search_tree<tkey, tvalue, compare, tag>::rend_postfix() const noexcept
             cur = cur->right_subtree;
         }
     }
-    return postfix_const_reverse_iterator(cur);
+    auto it = postfix_const_reverse_iterator(cur);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -3338,19 +3360,32 @@ namespace __detail {
         }
 
         if (node->left_subtree && node->right_subtree) {
-            // Находим наименьший элемент в правом поддереве
-            node_type* least_left = node->right_subtree;
-            while (least_left->left_subtree) {
-                least_left = least_left->left_subtree;
+            node_type* least = node->right_subtree;
+            while (least->left_subtree) least = least->left_subtree;
+
+            // Удаляем least из его текущего места
+            erase(cont, &least);
+
+            // Вставляем least вместо текущего node
+            // (то есть least забирает всех детей node)
+
+            least->left_subtree = node->left_subtree;
+            least->right_subtree = node->right_subtree;
+            if (least->left_subtree) least->left_subtree->parent = least;
+            if (least->right_subtree) least->right_subtree->parent = least;
+
+            if (node->parent) {
+                if (node->parent->left_subtree == node)
+                    node->parent->left_subtree = least;
+                else
+                    node->parent->right_subtree = least;
+            } else {
+                cont._root = least;
             }
 
-            // Переносим ссылку на правое поддерево и родителя в `least_left`
-            // Теперь, при удалении `least_left`, заменяется данные текущего узла
-            if (least_left->parent->left_subtree == least_left) {
-                erase(cont, &least_left->parent->left_subtree); // Рекурсивно удаляем `least_left`
-            } else {
-                erase(cont, &least_left->parent->right_subtree);
-            }
+            least->parent = node->parent;
+
+            delete_node(cont, node_ptr); // Удаляем node
         }
     }
 }
