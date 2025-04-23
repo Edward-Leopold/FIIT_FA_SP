@@ -3333,60 +3333,66 @@ namespace __detail {
         }
 
         if ((node->left_subtree && !node->right_subtree) || (node->right_subtree && !node->left_subtree)) { // node has one child
-            if (node->parent) { // if not root
-                if (node->left_subtree) { // has left child
-                    if (node == node->parent->left_subtree) {
-                        node->parent->left_subtree = node->left_subtree;
-                    } else {
-                        node->parent->right_subtree = node->left_subtree;
-                    }
-                } else { // node has right child
-                    if (node == node->parent->left_subtree) {
-                        node->parent->left_subtree = node->right_subtree;
-                    } else {
-                        node->parent->right_subtree = node->right_subtree;
-                    }
+            node_type* child = node->left_subtree ? node->left_subtree : node->right_subtree;
+
+            if (node->parent) {
+                if (node == node->parent->left_subtree) {
+                    node->parent->left_subtree = child;
+                } else {
+                    node->parent->right_subtree = child;
                 }
-            } else { // if node is root
-                if (node->left_subtree) { // root has left child
-                    cont._root = node->left_subtree;
-                } else { // root has right child
-                    cont._root = node->right_subtree;
-                }
+            } else {
+                cont._root = child;
             }
+
+            child->parent = node->parent;
             delete_node(cont, node_ptr);
 
             return;
         }
 
         if (node->left_subtree && node->right_subtree) {
-            node_type* least = node->right_subtree;
-            while (least->left_subtree) least = least->left_subtree;
-
-            // Удаляем least из его текущего места
-            erase(cont, &least);
-
-            // Вставляем least вместо текущего node
-            // (то есть least забирает всех детей node)
-
-            least->left_subtree = node->left_subtree;
-            least->right_subtree = node->right_subtree;
-            if (least->left_subtree) least->left_subtree->parent = least;
-            if (least->right_subtree) least->right_subtree->parent = least;
-
-            if (node->parent) {
-                if (node->parent->left_subtree == node)
-                    node->parent->left_subtree = least;
-                else
-                    node->parent->right_subtree = least;
-            } else {
-                cont._root = least;
+            node_type** temp_subtree_ptr = &(node->left_subtree);
+            while ((*temp_subtree_ptr)->right_subtree) {
+                temp_subtree_ptr = &((*temp_subtree_ptr)->right_subtree);
             }
 
-            least->parent = node->parent;
+            node_type* temp_subtree = *temp_subtree_ptr;
+            if (temp_subtree->parent->left_subtree == temp_subtree) {
+                temp_subtree->parent->left_subtree = temp_subtree->right_subtree;
+            } else {
+                temp_subtree->parent->right_subtree = temp_subtree->right_subtree;
+            }
 
-            delete_node(cont, node_ptr); // Удаляем node
+            if (temp_subtree->right_subtree) {
+                temp_subtree->right_subtree->parent = temp_subtree->parent;
+            }
+
+            temp_subtree->left_subtree = node->left_subtree;
+            if (temp_subtree->left_subtree) {
+                temp_subtree->left_subtree->parent = temp_subtree;
+            }
+
+            temp_subtree->right_subtree = node->right_subtree;
+            if (temp_subtree->right_subtree) {
+                temp_subtree->right_subtree->parent = temp_subtree;
+            }
+
+            temp_subtree->parent = node->parent;
+            if (node->parent) {
+                if (node->parent->left_subtree == node) {
+                    node->parent->left_subtree = temp_subtree;
+                } else {
+                    node->parent->right_subtree = temp_subtree;
+                }
+            } else {
+                cont._root = temp_subtree;
+            }
+
+            delete_node(cont, node_ptr);
+            // *node_ptr = temp_subtree;
         }
+
     }
 }
 
