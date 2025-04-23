@@ -14,6 +14,8 @@
 #include <concepts>
 #include <bits/cxxabi_tweaks.h>
 
+// #include "../scapegoat_tree/include/scapegoat_tree.h"
+
 namespace __detail
 {
     template<typename tkey, typename tvalue, typename compare, typename tag>
@@ -27,6 +29,7 @@ template<typename tkey, typename tvalue, compator<tkey> compare = std::less<tkey
 class binary_search_tree : private compare
 {
 public:
+    // friend __detail::bst_impl<tkey, tvalue, tag>
 
     using value_type = std::pair<const tkey, tvalue>;
 
@@ -283,8 +286,10 @@ public:
 
     class infix_iterator
     {
-    protected:
 
+    protected:
+        friend class __detail::bst_impl<tkey, tvalue, compare, tag>;
+        friend class binary_search_tree<tkey, tvalue, compare, tag>;
         node* _data;
 
         /** If iterator == end or before_begin _data points to nullptr, _backup to last node
@@ -749,6 +754,8 @@ public:
 
     size_t size() const noexcept;
 
+
+    void clear_postfix(node* subtree_root) noexcept;
     void clear() noexcept;
 
     std::pair<infix_iterator, bool> insert(const value_type&);
@@ -927,6 +934,7 @@ namespace __detail
     template<typename tkey, typename tvalue, typename compare, typename tag>
     class bst_impl
     {
+        friend class binary_search_tree<tkey, tvalue, compare, tag>;
         template<class ...Args>
         static binary_search_tree<tkey, tvalue, compare, tag>::node* create_node(binary_search_tree<tkey, tvalue, compare, tag>& cont, Args&& ...args);
 
@@ -958,7 +966,7 @@ template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 template<input_iterator_for_pair<tkey, tvalue> iterator>
 binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(iterator begin, iterator end, const compare &cmp,
     pp_allocator<typename binary_search_tree<tkey, tvalue, compare, tag>::value_type> alloc, logger *logger):
-    compare(cmp), _root(nullptr), _logger(logger), _size(0), _allocator(alloc)
+     _root(nullptr), _logger(logger), _size(0), _allocator(alloc)
 {
     insert(begin, end);
 }
@@ -2204,7 +2212,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(
         const compare& comp,
         pp_allocator<value_type> alloc,
         logger *logger):
-    compare(comp),
     _root(nullptr),
     _logger(logger),
     _size(0),
@@ -2217,7 +2224,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(
         pp_allocator<value_type> alloc,
         const compare& comp,
         logger *logger):
-    compare(comp),
     _root(nullptr),
     _logger(logger),
     _size(0),
@@ -2232,7 +2238,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(
         const compare& cmp,
         pp_allocator<value_type> alloc,
         logger* logger):
-    compare(cmp),
     _root(nullptr),
     _logger(logger),
     _size(0),
@@ -2247,7 +2252,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(
         const compare& cmp,
         pp_allocator<value_type> alloc,
         logger* logger):
-    compare(cmp),
     _root(nullptr),
     _logger(logger),
     _size(0),
@@ -2262,7 +2266,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(const binary_search_tree &other):
-    compare(other.compare),
     _logger(other._logger),
     _allocator(other._allocator),
     _size(0)
@@ -2276,7 +2279,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(const binary_
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::binary_search_tree(binary_search_tree &&other) noexcept:
-    compare(std::move(other.compare)),
     _root(other._root),
     _logger(other._logger),
     _allocator(std::move(other._allocator)),
@@ -2309,7 +2311,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::operator=(binary_search_tree &&o
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 binary_search_tree<tkey, tvalue, compare, tag>::~binary_search_tree()
 {
-    clear(_root);
+    clear();
 }
 
 // endregion binary_search_tree 5_rules implementation
@@ -2375,14 +2377,17 @@ size_t binary_search_tree<tkey, tvalue, compare, tag>::size() const noexcept
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 void binary_search_tree<tkey, tvalue, compare, tag>::clear() noexcept
 {
-    for (auto it = begin_postfix(); it != end_postfix(); ++it){
-        auto cur = it._data;
-        ++it;
-        _allocator.delete_object(cur);
+    for (auto it = begin_postfix(); it != end_postfix(); ) {
+        tkey key = it->first;
+        ++it; // Сдвигаем до удаления
+
+        erase(key);
     }
-    _allocator.delete_object(_root);
-    // _size = 0;
+
+    _root = nullptr;
+    _size = 0;
 }
+
 
 // endregion binary_search_tree methods_access implementation
 
@@ -2399,23 +2404,23 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert(const value_type& value)
         parent = current;
 
         if (compare_keys(value.first, current->data.first)) {
-            current = current->left;
+            current = current->left_subtree;
         } else if (compare_keys(current->data.first, value.first)) {
-            current = current->right;
+            current = current->right_subtree;
         } else {
-            return std::make_pair(infix_iterator(current), false); // same elem was found
+            return std::make_pair(infix_iterator(current), false); // элемент уже есть
         }
     }
 
-    node* new_node = __detail::bst_impl<tkey, tvalue, compare, tag>::create_node(*this, value);
-    new_node->parent = parent;
+    // Создаём ноду через аллокатор
+    node* new_node = _allocator.template new_object<node>(parent, value);
 
     if (_root == nullptr) {
         _root = new_node;
     } else if (compare_keys(value.first, parent->data.first)) {
-        parent->left = new_node;
+        parent->left_subtree = new_node;
     } else {
-        parent->right = new_node;
+        parent->right_subtree = new_node;
     }
 
     ++_size;
@@ -2477,7 +2482,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(value_type&& va
     auto moved_val = std::move(value.second);
     auto res = insert(std::move(value));
     if (!res.second) {
-        res.first->data.second = std::move(moved_val);
+        res.first->second = std::move(moved_val);
     }
 
     return res.first;
@@ -2649,7 +2654,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::upper_bound(const tkey& key) con
 
     return infix_const_iterator(result);
 }
-
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator
 binary_search_tree<tkey, tvalue, compare, tag>::erase(infix_iterator pos)
@@ -2662,6 +2666,8 @@ binary_search_tree<tkey, tvalue, compare, tag>::erase(infix_iterator pos)
 
     return next;
 }
+
+
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator
@@ -3276,7 +3282,7 @@ namespace __detail {
     }
 
     template<typename tkey, typename tvalue, typename compare, typename tag>
-    void bst_impl<tkey, tvalue, compare, tag>::delete_node(binary_search_tree<tkey, tvalue, compare, tag>& cont, binary_search_tree<tkey, tvalue, compare, tag>::node** node)
+    void bst_impl<tkey, tvalue, compare, tag>::delete_node(binary_search_tree<tkey, tvalue, compare, tag>& cont, typename binary_search_tree<tkey, tvalue, compare, tag>::node** node)
     {
         using node_type = typename binary_search_tree<tkey, tvalue, compare, tag>::node;
         if (node){
@@ -3332,14 +3338,16 @@ namespace __detail {
         }
 
         if (node->left_subtree && node->right_subtree) {
+            // Находим наименьший элемент в правом поддереве
             node_type* least_left = node->right_subtree;
             while (least_left->left_subtree) {
                 least_left = least_left->left_subtree;
             }
 
-            node->data = least_left->data;
+            // Переносим ссылку на правое поддерево и родителя в `least_left`
+            // Теперь, при удалении `least_left`, заменяется данные текущего узла
             if (least_left->parent->left_subtree == least_left) {
-                erase(cont, &least_left->parent->left_subtree);
+                erase(cont, &least_left->parent->left_subtree); // Рекурсивно удаляем `least_left`
             } else {
                 erase(cont, &least_left->parent->right_subtree);
             }
