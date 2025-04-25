@@ -1103,6 +1103,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::prefix_iterator::operator--() & 
             _data = tmp;
         }
     }
+    return *this;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -1135,6 +1136,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::prefix_iterator::operator->() no
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 size_t binary_search_tree<tkey, tvalue, compare, tag>::prefix_iterator::depth() const noexcept
 {
+    if (_data == nullptr) return 0;
     size_t depth = 0;
     for (node* cur = _data; cur->parent != nullptr; cur = cur->parent, ++depth) {}
     return depth;
@@ -1532,6 +1534,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator::operator->() noe
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 size_t binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator::depth() const noexcept
 {
+    if (_data == nullptr) return 0;
     size_t depth = 0;
     for (node* cur = _data; cur->parent != nullptr; cur = cur->parent, ++depth) {}
     return depth;
@@ -1924,6 +1927,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::postfix_iterator::operator->() n
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 size_t binary_search_tree<tkey, tvalue, compare, tag>::postfix_iterator::depth() const noexcept
 {
+    if (_data == nullptr) return 0;
     size_t depth = 0;
     for (node* cur = _data; cur->parent != nullptr; cur = cur->parent, ++depth) {}
     return depth;
