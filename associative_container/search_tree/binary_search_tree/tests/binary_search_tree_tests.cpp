@@ -2,6 +2,7 @@
 #include <binary_search_tree.h>
 #include <logger_builder.h>
 #include <client_logger_builder.h>
+#include <ranges>
 // #include <allocator_sorted_list.h>
 #include <iostream>
 
@@ -40,18 +41,18 @@ bool compare_results(
         return false;
     }
 
-    // for (auto&& val : std::views::zip(expected, actual))
-    // {
-    //     if (std::get<0>(val).first != std::get<1>(val).first)
-    //     {
-    //         return false;
-    //     }
-    //
-    //     if (std::get<0>(val).second != std::get<1>(val).second)
-    //     {
-    //         return false;
-    //     }
-    // }
+    for (auto&& val : std::ranges::views::zip(expected, actual))
+    {
+        if (std::get<0>(val).first != std::get<1>(val).first)
+        {
+            return false;
+        }
+
+        if (std::get<0>(val).second != std::get<1>(val).second)
+        {
+            return false;
+        }
+    }
     
     return true;
 }
