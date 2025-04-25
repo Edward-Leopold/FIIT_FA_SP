@@ -4,6 +4,7 @@
 #include <logger_builder.h>
 #include <unordered_map>
 #include "server_logger.h"
+#include <nlohmann/json.hpp>
 
 class server_logger_builder final:
     public logger_builder
@@ -12,10 +13,10 @@ class server_logger_builder final:
     std::string _destination;
 
     std::unordered_map<logger::severity ,std::pair<std::string, bool>> _output_streams;
-
+    std::string _format;
 public:
 
-    server_logger_builder() : _destination("http://127.0.0.1:9200"){}
+    server_logger_builder() : _destination("http://127.0.0.1:9200"), _format("%m"){}
 
 public:
 
