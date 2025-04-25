@@ -65,22 +65,46 @@ logger_builder& server_logger_builder::transform_with_configuration(
     return *this;
 }
 
+void server_logger_builder::parse_severity(const logger::severity sev, nlohmann::json& j)
+{
+    if (!j.contains("file_paths") || !j["file_paths"].is_array() || !j.contains("console") || !j["console"].is_boolean()) {
+        throw std::runtime_error("Failed to parse configuration file. Invalid format of severity, the severity object must contain 'file_paths' and 'console'");
+    }
+
+    for (const auto & file_path : j["file_paths"]) {
+        if (!file_path.is_string()) {
+            throw std::runtime_error("Failed to parse configuration file. Each file path must be a string");
+        }
+
+        std::string path = file_path.get<std::string>();
+        add_file_stream(path, sev);
+    }
+
+    if (j["console"].get<bool>()) {
+        add_console_stream(sev);
+    }
+}
+
 logger_builder& server_logger_builder::clear() &
 {
-    throw not_implemented("logger_builder& server_logger_builder::clear() &", "your code should be here...");
+    _format = "%m";
+    _output_streams.clear();
+    return *this;
 }
 
 logger *server_logger_builder::build() const
 {
-    throw not_implemented("logger *server_logger_builder::build() const", "your code should be here...");
+    return new server_logger(_destination, _output_streams, _format);
 }
 
 logger_builder& server_logger_builder::set_destination(const std::string& dest) &
 {
-    throw not_implemented("logger_builder& server_logger_builder::set_destination(const std::string&) &", "your code should be here...");
+    _destination = dest;
+    return *this;
 }
 
 logger_builder& server_logger_builder::set_format(const std::string &format) &
 {
-    throw not_implemented("logger_builder& server_logger_builder::set_format(const std::string &) &", "your code should be here...");
+    _format = format;
+    return *this;
 }

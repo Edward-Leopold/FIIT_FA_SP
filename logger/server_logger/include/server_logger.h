@@ -17,7 +17,7 @@ public:
     enum class flag
     { DATE, TIME, SEVERITY, MESSAGE, NO_FLAG };
 private:
-    server_logger(const std::string& dest, const std::unordered_map<logger::severity ,std::pair<std::string, bool>>& streams);
+    server_logger(const std::string& dest, const std::unordered_map<logger::severity ,std::pair<std::string, bool>>& streams, const std::string &format);
 
     std::string make_format(const std::string& message, severity sev) const;
     static flag char_to_flag(char c) noexcept;

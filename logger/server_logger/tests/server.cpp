@@ -12,54 +12,82 @@ using json = nlohmann::json;
 
 server::server(uint16_t port) {
     CROW_ROUTE(app, "/logger/init").methods("POST"_method)([&](const crow::request &req) {
-        json body = json::parse(req.body);
-        int pid = body["pid"];
-        logger::severity sev = logger_builder::string_to_severity(body["severity"]);
-        std::string path = body["path"];
-        bool console = body["console"];
+        try {
+            json body = json::parse(req.body);
 
-        {
-            std::lock_guard lock(_mut);
-            _streams[pid][sev] = { path, console };
+            if (!body.contains("pid") || !body.contains("severity") || !body.contains("path") || !body.contains("console")) {
+                return crow::response(400, "Missing one of required fields: pid, severity, path, console");
+            }
+
+            int pid = body["pid"];
+            logger::severity sev = logger_builder::string_to_severity(body["severity"]);
+            std::string path = body["path"];
+            bool console = body["console"];
+
+            {
+                std::lock_guard lock(_mut);
+                _streams[pid][sev] = { path, console };
+            }
+            return crow::response(204);
+        } catch (const std::exception& e) {
+            return crow::response(500, std::string("Internal server error: ") + e.what());
         }
-        return crow::response(204);
     });
 
+
     CROW_ROUTE(app, "/logger/log").methods("POST"_method)([&](const crow::request &req) {
-        json body = json::parse(req.body);
-        int pid = body["pid"];
-        logger::severity sev = logger_builder::string_to_severity(body["severity"]);
-        std::string message = body["message"];
+        try {
+           json body = json::parse(req.body);
 
-        std::shared_lock lock(_mut);
-        auto it = _streams.find(pid);
-        if (it != _streams.end()) {
-            auto inner_it = it->second.find(sev);
-            if (inner_it != it->second.end()) {
-                const std::string &path = inner_it->second.first;
-                bool console = inner_it->second.second;
+           if (!body.contains("pid") || !body.contains("severity") || !body.contains("message")) {
+               return crow::response(400, "Missing one of required fields: pid, severity, message");
+           }
 
-                if (!path.empty()) {
-                    std::ofstream stream(path, std::ios_base::app);
-                    if (stream.is_open()) stream << message << std::endl;
-                }
-                if (console) {
-                    std::cout << message << std::endl;
-                }
-            }
-        }
-        return crow::response(204);
+           int pid = body["pid"];
+           logger::severity sev = logger_builder::string_to_severity(body["severity"]);
+           std::string message = body["message"];
+
+           std::shared_lock lock(_mut);
+           auto it = _streams.find(pid);
+           if (it != _streams.end()) {
+               auto inner_it = it->second.find(sev);
+               if (inner_it != it->second.end()) {
+                   const std::string &path = inner_it->second.first;
+                   bool console = inner_it->second.second;
+
+                   if (!path.empty()) {
+                       std::ofstream stream(path, std::ios_base::app);
+                       if (stream.is_open()) stream << message << std::endl;
+                   }
+                   if (console) {
+                       std::cout << message << std::endl;
+                   }
+               }
+           }
+           return crow::response(204);
+       } catch (const std::exception& e) {
+           return crow::response(500, std::string("Internal server error: ") + e.what());
+       }
     });
 
     CROW_ROUTE(app, "/logger/stop").methods("POST"_method)([&](const crow::request &req) {
-        json body = json::parse(req.body);
-        int pid = body["pid"];
-        {
-            std::lock_guard lock(_mut);
-            _streams.erase(pid);
+        try {
+            json body = json::parse(req.body);
+            if (!body.contains("pid")) {
+                return crow::response(400, "Missing required field: pid");
+            }
+
+            int pid = body["pid"];
+            {
+                std::lock_guard lock(_mut);
+                _streams.erase(pid);
+            }
+            return crow::response(204);
+        } catch (const std::exception& e) {
+            return crow::response(500, std::string("Internal server error: ") + e.what());
         }
-        return crow::response(204);
     });
+
 
     app.port(port).loglevel(crow::LogLevel::Warning).multithreaded();
     app.run();

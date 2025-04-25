@@ -14,6 +14,8 @@ class server_logger_builder final:
 
     std::unordered_map<logger::severity ,std::pair<std::string, bool>> _output_streams;
     std::string _format;
+
+    void parse_severity(logger::severity sev, nlohmann::json& j);
 public:
 
     server_logger_builder() : _destination("http://127.0.0.1:9200"), _format("%m"){}
