@@ -11,6 +11,7 @@ class server_logger final:
 {
     httplib::Client _client;
     std::unordered_map<logger::severity, std::pair<std::string, bool>> _streams;
+    std::string _dest;
     std::string _format;
 public:
     enum class flag
@@ -28,9 +29,9 @@ private:
 
 public:
 
-    server_logger(server_logger const &other);
+    server_logger(server_logger const &other) = delete;
 
-    server_logger &operator=(server_logger const &other);
+    server_logger &operator=(server_logger const &other) = delete;
 
     server_logger(server_logger &&other) noexcept;
 
