@@ -17,7 +17,10 @@ server_logger::~server_logger() noexcept
         {"pid", inner_getpid()}
     };
     httplib::Headers headers = {{"Content-Type", "application/json"}};
-    _client.Post("/logger/stop", headers, body.dump(), "application/json");
+    auto response = _client.Post("/logger/stop", headers, body.dump(), "application/json");
+    if (!response) {
+        throw std::runtime_error("Timeout while sending stop log to server");
+    }
 }
 
 logger& server_logger::log(
@@ -31,7 +34,10 @@ logger& server_logger::log(
         {"message", formatted}
     };
     httplib::Headers headers = {{"Content-Type", "application/json"}};
-    _client.Post("/logger/log", headers, body.dump(), "application/json");
+    auto response = _client.Post("/logger/log", headers, body.dump(), "application/json");
+    if (!response) {
+        throw std::runtime_error("Timeout while sending stop log to server");
+    }
 
     auto it = _streams.find(severity);
     if (it != _streams.end()) {
@@ -50,6 +56,10 @@ server_logger::server_logger(const std::string& dest,
     _format(format)
 {
     std::cout << "builded!" << std::endl;
+
+    _client.set_read_timeout(10);
+    _client.set_connection_timeout(10);
+
     int pid = inner_getpid();
     for (const auto &[sev, stream_info]: streams) {
         for (const auto& path : stream_info.first) {
@@ -60,7 +70,10 @@ server_logger::server_logger(const std::string& dest,
                 {"console", stream_info.second}
             };
             httplib::Headers headers = {{"Content-Type", "application/json"}};
-            _client.Post("/logger/init", headers, body.dump(), "application/json");
+            auto response = _client.Post("/logger/init", headers, body.dump(), "application/json");
+            if (!response) {
+                throw std::runtime_error("Timeout while sending stop log to server");
+            }
         }
     }
 
@@ -90,7 +103,10 @@ server_logger &server_logger::operator=(server_logger &&other) noexcept
         //closing (this) connection with old destination
         int this_pid = inner_getpid();
         nlohmann::json body_for_this_old = {{"pid", this_pid}};
-        _client.Post("/logger/stop", "application/json", body_for_this_old.dump());
+        auto response = _client.Post("/logger/stop", "application/json", body_for_this_old.dump());
+        if (!response) {
+            throw std::runtime_error("Timeout while sending stop log to server");
+        }
 
         _client = std::move(other._client);
         _streams = std::move(other._streams);
@@ -107,7 +123,10 @@ server_logger &server_logger::operator=(server_logger &&other) noexcept
                     {"console", stream_info.second}
                 };
                 httplib::Headers headers = {{"Content-Type", "application/json"}};
-                _client.Post("/logger/init", headers, body.dump(), "application/json");
+                response = _client.Post("/logger/init", headers, body.dump(), "application/json");
+                if (!response) {
+                    throw std::runtime_error("Timeout while sending stop log to server");
+                }
             }
         }
     }
