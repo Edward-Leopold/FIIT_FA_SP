@@ -19,7 +19,7 @@ server_logger::~server_logger() noexcept
     httplib::Headers headers = {{"Content-Type", "application/json"}};
     auto response = _client.Post("/logger/stop", headers, body.dump(), "application/json");
     if (!response) {
-        throw std::runtime_error("Timeout while sending stop log to server");
+        throw std::runtime_error("Timeout while sending request to server");
     }
 }
 
@@ -36,7 +36,7 @@ logger& server_logger::log(
     httplib::Headers headers = {{"Content-Type", "application/json"}};
     auto response = _client.Post("/logger/log", headers, body.dump(), "application/json");
     if (!response) {
-        throw std::runtime_error("Timeout while sending stop log to server");
+        throw std::runtime_error("Timeout while sending request to server");
     }
 
     auto it = _streams.find(severity);
@@ -72,7 +72,7 @@ server_logger::server_logger(const std::string& dest,
             httplib::Headers headers = {{"Content-Type", "application/json"}};
             auto response = _client.Post("/logger/init", headers, body.dump(), "application/json");
             if (!response) {
-                throw std::runtime_error("Timeout while sending stop log to server");
+                throw std::runtime_error("Timeout while sending request to server");
             }
         }
     }
@@ -105,7 +105,7 @@ server_logger &server_logger::operator=(server_logger &&other) noexcept
         nlohmann::json body_for_this_old = {{"pid", this_pid}};
         auto response = _client.Post("/logger/stop", "application/json", body_for_this_old.dump());
         if (!response) {
-            throw std::runtime_error("Timeout while sending stop log to server");
+            throw std::runtime_error("Timeout while sending request to server");
         }
 
         _client = std::move(other._client);
@@ -125,7 +125,7 @@ server_logger &server_logger::operator=(server_logger &&other) noexcept
                 httplib::Headers headers = {{"Content-Type", "application/json"}};
                 response = _client.Post("/logger/init", headers, body.dump(), "application/json");
                 if (!response) {
-                    throw std::runtime_error("Timeout while sending stop log to server");
+                    throw std::runtime_error("Timeout while sending request to server");
                 }
             }
         }
