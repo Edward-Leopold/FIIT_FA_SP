@@ -1,9 +1,9 @@
 #include "server.h"
 #include <server_logger_builder.h>
+#include <unistd.h>
 
-int main()
-{
-
+int main() {
+    std::cout << "PID of client is: " << getpid() << std::endl;
 
     server_logger_builder builder;
 

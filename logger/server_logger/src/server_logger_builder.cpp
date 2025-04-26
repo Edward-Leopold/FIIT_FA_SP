@@ -9,10 +9,23 @@ logger_builder& server_logger_builder::add_file_stream(
 {
     auto iter = _output_streams.find(severity);
     if (iter == _output_streams.end()) {
-        iter = _output_streams.emplace(severity, std::make_pair(stream_file_path, false)).first;
-    }
+        std::forward_list<std::string> list;
+        list.emplace_front(stream_file_path);
+        _output_streams[severity] = std::make_pair(std::move(list), false);
+    } else {
 
-    iter->second.first = stream_file_path;
+        auto& streams = iter->second.first;
+        bool is_existing = std::any_of(
+            streams.begin(),
+            streams.end(),
+            [&](const std::string &s) {
+                return std::filesystem::weakly_canonical(s) == std::filesystem::weakly_canonical(stream_file_path);;
+            });
+
+        if (!is_existing) {
+            streams.emplace_front(stream_file_path);
+        }
+    }
     return *this;
 }
 
@@ -20,10 +33,11 @@ logger_builder& server_logger_builder::add_console_stream(
     logger::severity severity) &
 {
     auto iter = _output_streams.find(severity);
-    if (iter == _output_streams.end()){
-        iter = _output_streams.emplace(severity, std::make_pair(std::string(), false)).first;
+    if (iter == _output_streams.end()) {
+        _output_streams[severity] = std::make_pair(std::forward_list<std::string>(), true);
+    } else {
+        iter->second.second = true;
     }
-    iter->second.second = true;
     return *this;
 }
 

@@ -4,20 +4,21 @@
 #include <logger.h>
 #include <unordered_map>
 #include <httplib.h>
+#include <forward_list>
 
 class server_logger_builder;
 class server_logger final:
     public logger
 {
     httplib::Client _client;
-    std::unordered_map<logger::severity, std::pair<std::string, bool>> _streams;
+    std::unordered_map<logger::severity, std::pair<std::forward_list<std::string>, bool>> _streams;
     std::string _dest;
     std::string _format;
 public:
     enum class flag
     { DATE, TIME, SEVERITY, MESSAGE, NO_FLAG };
 private:
-    server_logger(const std::string& dest, const std::unordered_map<logger::severity ,std::pair<std::string, bool>>& streams, const std::string &format);
+    server_logger(const std::string& dest, const std::unordered_map<logger::severity ,std::pair<std::forward_list<std::string>, bool>>& streams, const std::string &format);
 
     std::string make_format(const std::string& message, severity sev) const;
     static flag char_to_flag(char c) noexcept;

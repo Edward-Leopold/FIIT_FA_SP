@@ -10,12 +10,13 @@
 #include <logger.h>
 //#include <mutex>
 #include <shared_mutex>
+#include <forward_list>
 
 class server
 {
     crow::SimpleApp app;
 
-    std::unordered_map<int, std::unordered_map<logger::severity, std::pair<std::string, bool>>> _streams;
+    std::unordered_map<int, std::unordered_map<logger::severity, std::pair<std::forward_list<std::string>, bool>>> _streams;
 
     std::shared_mutex _mut;
 

@@ -34,31 +34,36 @@ logger& server_logger::log(
     _client.Post("/logger/log", headers, body.dump(), "application/json");
 
     auto it = _streams.find(severity);
-    if (it != _streams.end() && it->second.second) {
-        std::cout << formatted << std::endl;
+    if (it != _streams.end()) {
+        if (it->second.second) {
+            std::cout << formatted << std::endl;
+        }
     }
-
     return *this;
 }
 
 server_logger::server_logger(const std::string& dest,
-                             const std::unordered_map<logger::severity, std::pair<std::string, bool>> &streams, const std::string &format):
+                             const std::unordered_map<logger::severity, std::pair<std::forward_list<std::string>, bool>> &streams, const std::string &format):
     _client(dest),
     _streams(streams),
     _dest(dest),
     _format(format)
 {
+    std::cout << "builded!" << std::endl;
     int pid = inner_getpid();
     for (const auto &[sev, stream_info]: streams) {
-        json body = {
-            {"pid", pid},
-            {"severity", severity_to_string(sev)},
-            {"path", stream_info.first},
-            {"console", stream_info.second}
-        };
-        httplib::Headers headers = {{"Content-Type", "application/json"}};
-        _client.Post("/logger/init", headers, body.dump(), "application/json");
+        for (const auto& path : stream_info.first) {
+            json body = {
+                {"pid", pid},
+                {"severity", severity_to_string(sev)},
+                {"path", path},
+                {"console", stream_info.second}
+            };
+            httplib::Headers headers = {{"Content-Type", "application/json"}};
+            _client.Post("/logger/init", headers, body.dump(), "application/json");
+        }
     }
+
 }
 
 int server_logger::inner_getpid()
@@ -86,10 +91,6 @@ server_logger &server_logger::operator=(server_logger &&other) noexcept
         int this_pid = inner_getpid();
         nlohmann::json body_for_this_old = {{"pid", this_pid}};
         _client.Post("/logger/stop", "application/json", body_for_this_old.dump());
-        //closing connection with old destination
-        // int other_pid = other.inner_getpid();
-        // nlohmann::json body_for_another_old = {{"pid", other_pid}};
-        // _client.Post("/logger/stop", "application/json", body_for_another_old.dump());
 
         _client = std::move(other._client);
         _streams = std::move(other._streams);
@@ -98,13 +99,16 @@ server_logger &server_logger::operator=(server_logger &&other) noexcept
 
         //openning new connection with moved destination
         for (const auto &[sev, stream_info]: _streams) {
-            json body = {
-                {"pid", this_pid},
-                {"severity", severity_to_string(sev)},
-                {"path", stream_info.first},
-                {"console", stream_info.second}
-            };
-            _client.Post("/logger/init", "application/json", body.dump());
+            for (const auto& path : stream_info.first) {
+                json body = {
+                    {"pid", this_pid},
+                    {"severity", severity_to_string(sev)},
+                    {"path", path},
+                    {"console", stream_info.second}
+                };
+                httplib::Headers headers = {{"Content-Type", "application/json"}};
+                _client.Post("/logger/init", headers, body.dump(), "application/json");
+            }
         }
     }
     return *this;

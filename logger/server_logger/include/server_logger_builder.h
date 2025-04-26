@@ -12,7 +12,7 @@ class server_logger_builder final:
 
     std::string _destination;
 
-    std::unordered_map<logger::severity ,std::pair<std::string, bool>> _output_streams;
+    std::unordered_map<logger::severity ,std::pair<std::forward_list<std::string>, bool>> _output_streams;
     std::string _format;
 
     void parse_severity(logger::severity sev, nlohmann::json& j);
