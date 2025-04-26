@@ -19,7 +19,7 @@ server::server(uint16_t port) {
             json body = json::parse(req.body);
 
             if (!body.contains("pid") || !body.contains("severity") || !body.contains("path") || !body.contains("console")) {
-                return crow::response(400, "Missing one of required fields: pid, severity, path, console");
+                return crow::response(400, "Missing fields: pid, severity, path, console");
             }
 
             int pid = body["pid"];
