@@ -25,16 +25,16 @@ server::server(uint16_t port) {
             int pid = body["pid"];
             logger::severity sev = logger_builder::string_to_severity(body["severity"]);
             std::string path = body["path"];
-            bool console = body["console"];
+            bool is_write_console = body["console"];
 
-            {
-                std::lock_guard lock(_mut);
-                _streams[pid][sev].first.push_front(path);
-                _streams[pid][sev].second = console;
-            }
-            return crow::response(204);
+
+            std::lock_guard lock(_mut);
+            _streams[pid][sev].first.push_front(path);
+            _streams[pid][sev].second = is_write_console;
+
+            return crow::response(200);
         } catch (const std::exception& e) {
-            return crow::response(500, std::string("Internal server error: ") + e.what());
+            return crow::response(500, std::string("Sserver error: ") + e.what());
         }
     });
 
@@ -55,10 +55,10 @@ server::server(uint16_t port) {
             std::shared_lock lock(_mut);
             auto it = _streams.find(pid);
             if (it != _streams.end()) {
-                auto inner_it = it->second.find(sev);
-                if (inner_it != it->second.end()) {
-                    const auto& paths = inner_it->second.first;
-                    bool console = inner_it->second.second;
+                auto file_streams_it = it->second.find(sev);
+                if (file_streams_it != it->second.end()) {
+                    const auto& paths = file_streams_it->second.first;
+                    bool console = file_streams_it->second.second;
 
                     for (const auto& path : paths) {
                         if (!path.empty()) {
@@ -69,14 +69,12 @@ server::server(uint16_t port) {
                         }
                     }
 
-                    if (console) {
-                        std::cout << message << std::endl;
-                    }
+                    if (console) std::cout << message << std::endl;
                 }
             }
-            return crow::response(204);
+            return crow::response(200);
         } catch (const std::exception& e) {
-            return crow::response(500, std::string("Internal server error: ") + e.what());
+            return crow::response(500, std::string("server error ") + e.what());
         }
     });
 
@@ -89,13 +87,13 @@ server::server(uint16_t port) {
 
             int pid = body["pid"];
             std::cout << "current PID: "<< pid << std::endl;
-            {
-                std::lock_guard lock(_mut);
-                _streams.erase(pid);
-            }
-            return crow::response(204);
+
+            std::lock_guard lock(_mut);
+            _streams.erase(pid);
+
+            return crow::response(200);
         } catch (const std::exception& e) {
-            return crow::response(500, std::string("Internal server error: ") + e.what());
+            return crow::response(500, std::string("server error ") + e.what());
         }
     });
 
