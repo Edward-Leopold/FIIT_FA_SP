@@ -8,10 +8,12 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <forward_list>
+#include <unistd.h>
 
 using json = nlohmann::json;
 
 server::server(uint16_t port) {
+    std::cout << "Server pid: " << getpid() << std::endl;
     CROW_ROUTE(app, "/logger/init").methods("POST"_method)([&](const crow::request &req) {
         try {
             json body = json::parse(req.body);
@@ -27,8 +29,8 @@ server::server(uint16_t port) {
 
             {
                 std::lock_guard lock(_mut);
-                _streams[pid][sev].first.push_front(path);  // добавляем новый путь
-                _streams[pid][sev].second = console;         // обновляем флаг консоли
+                _streams[pid][sev].first.push_front(path);
+                _streams[pid][sev].second = console;
             }
             return crow::response(204);
         } catch (const std::exception& e) {
@@ -55,8 +57,8 @@ server::server(uint16_t port) {
             if (it != _streams.end()) {
                 auto inner_it = it->second.find(sev);
                 if (inner_it != it->second.end()) {
-                    const auto& paths = inner_it->second.first;  // все пути
-                    bool console = inner_it->second.second;      // печатать ли в консоль
+                    const auto& paths = inner_it->second.first;
+                    bool console = inner_it->second.second;
 
                     for (const auto& path : paths) {
                         if (!path.empty()) {
@@ -86,6 +88,7 @@ server::server(uint16_t port) {
             }
 
             int pid = body["pid"];
+            std::cout << "current PID: "<< pid << std::endl;
             {
                 std::lock_guard lock(_mut);
                 _streams.erase(pid);
