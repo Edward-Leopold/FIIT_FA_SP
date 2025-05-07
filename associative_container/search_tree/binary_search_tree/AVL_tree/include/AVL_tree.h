@@ -10,6 +10,7 @@ namespace __detail
     template<typename tkey, typename tvalue, typename compare>
     class bst_impl<tkey, tvalue, compare, AVL_TAG>
     {
+        friend class binary_search_tree<tkey, tvalue, compare, AVL_TAG>;
         template<class ...Args>
         static binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node* create_node(binary_search_tree<tkey, tvalue, compare, AVL_TAG>& cont, Args&& ...args);
 
@@ -634,32 +635,127 @@ namespace __detail
             binary_search_tree <tkey, tvalue, compare, AVL_TAG> &cont,
             typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node **node)
     {
-        throw not_implemented("template<typename tkey, typename tvalue, typename compare>\n"
-                              "void bst_impl<tkey, tvalue, compare, AVL_TAG>::post_insert(\n"
-                              "binary_search_tree <tkey, tvalue, compare, AVL_TAG> &,\n"
-                              "typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node **)", "your code should be here...");
+        if (!node || !*node) return;
 
+        auto* current = (*node)->parent;
+
+        while (current != nullptr) {
+            current->recalculate_height();
+            short balance = current->get_balance();
+
+            // правый перекос
+            if (balance == 2) {
+                if (current->right_subtree->get_balance() == -1) {
+                    cont.big_left_rotation(current);
+                } else {
+                    cont.small_left_rotation(current);
+                }
+            }
+            // левый перекос
+            else if (balance == -2) {
+                if (current->left_subtree->get_balance() == 1) {
+                    cont.big_right_rotation(current);
+                }else {
+                    cont.small_right_rotation(current);
+                }
+            }
+
+            current = current->parent;
+        }
     }
 
     template<typename tkey, typename tvalue, typename compare>
     void bst_impl<tkey, tvalue, compare, AVL_TAG>::erase(
             binary_search_tree <tkey, tvalue, compare, AVL_TAG> &cont,
-            typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node **node)
+            typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node **node_ptr)
     {
-        throw not_implemented("template<typename tkey, typename tvalue, typename compare>\n"
-                              "void bst_impl<tkey, tvalue, compare, AVL_TAG>::erase(\n"
-                              "binary_search_tree <tkey, tvalue, compare, AVL_TAG> &,\n"
-                              "typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node **)", "your code should be here...");
+        using node_type = typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node;
+        node_type* node = *node_ptr;
+        node_type* balance_from = nullptr;
+        if (!node) return;
+
+        if (!node->left_subtree && !node->right_subtree) { // leaf or root
+            balance_from = node->parent;
+
+            if (node->parent) {
+                if (node == node->parent->left_subtree)
+                    node->parent->left_subtree = nullptr;
+                else
+                    node->parent->right_subtree = nullptr;
+            } else {
+                cont._root = nullptr;
+            }
+        }
+        else if ((node->left_subtree && !node->right_subtree) || (node->right_subtree && !node->left_subtree)) { // only one subtree
+            node_type* child = node->left_subtree ? node->left_subtree : node->right_subtree;
+            balance_from = node->parent;
+
+            if (node->parent) {
+                if (node == node->parent->left_subtree)
+                    node->parent->left_subtree = child;
+                else
+                    node->parent->right_subtree = child;
+            } else {
+                cont._root = child;
+            }
+
+            child->parent = node->parent;
+        }
+        else { // two childs: left and right subtrees
+            node_type** temp_subtree_ptr = &(node->left_subtree);
+            while ((*temp_subtree_ptr)->right_subtree) {
+                temp_subtree_ptr = &((*temp_subtree_ptr)->right_subtree);
+            }
+
+            node_type* temp_subtree = *temp_subtree_ptr;
+
+            if (temp_subtree->parent->left_subtree == temp_subtree)
+                temp_subtree->parent->left_subtree = temp_subtree->right_subtree;
+            else
+                temp_subtree->parent->right_subtree = temp_subtree->right_subtree;
+
+            if (temp_subtree->right_subtree)
+                temp_subtree->right_subtree->parent = temp_subtree->parent;
+
+            temp_subtree->left_subtree = node->left_subtree;
+            if (temp_subtree->left_subtree)
+                temp_subtree->left_subtree->parent = temp_subtree;
+
+            temp_subtree->right_subtree = node->right_subtree;
+            if (temp_subtree->right_subtree)
+                temp_subtree->right_subtree->parent = temp_subtree;
+
+            temp_subtree->parent = node->parent;
+
+            if (node->parent) {
+                if (node->parent->left_subtree == node)
+                    node->parent->left_subtree = temp_subtree;
+                else
+                    node->parent->right_subtree = temp_subtree;
+            } else {
+                cont._root = temp_subtree;
+            }
+
+            balance_from = temp_subtree->parent;
+        }
+
+        delete_node(cont, node_ptr);
+        if (balance_from)
+            post_insert(cont, &balance_from);
     }
 }
 
 template<typename tkey, typename tvalue, typename compare>
-void __detail::bst_impl<tkey, tvalue, compare, __detail::AVL_TAG>::swap(binary_search_tree<tkey, tvalue, compare, AVL_TAG> &lhs,
-                                                          binary_search_tree<tkey, tvalue, compare, AVL_TAG> &rhs) noexcept
+void __detail::bst_impl<tkey, tvalue, compare, __detail::AVL_TAG>::swap(
+    binary_search_tree<tkey, tvalue, compare, AVL_TAG> &lhs,
+    binary_search_tree<tkey, tvalue, compare, AVL_TAG> &rhs
+    ) noexcept
 {
-    throw not_implemented("template<typename tkey, typename tvalue, typename compare>\n"
-                          "void __detail::bst_impl<tkey, tvalue, compare, __detail::AVL_TAG>::swap(binary_search_tree<tkey, tvalue, compare, AVL_TAG> &lhs,\n"
-                          "binary_search_tree<tkey, tvalue, compare, AVL_TAG> &rhs) noexcept", "your code should be here...");
+    using std::swap;
+    swap(lhs.root, rhs.root);
+    swap(lhs._logger, rhs._logger);
+    swap(lhs._size, rhs._size);
+    swap(lhs._allocator, rhs._allocator);
 }
 
 // region node implementation
@@ -739,17 +835,13 @@ AVL_tree<tkey, tvalue, compare>::prefix_const_iterator::prefix_const_iterator(pr
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::prefix_const_iterator::get_height() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->height;
+    return prefix_iterator(this->_base).get_height();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::prefix_const_iterator::get_balance() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->get_balance();
+    return prefix_iterator(this->_base).get_balance();
 }
 
 // endregion prefix_const_iterator implementation
@@ -769,17 +861,13 @@ AVL_tree<tkey, tvalue, compare>::prefix_reverse_iterator::prefix_reverse_iterato
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::prefix_reverse_iterator::get_height() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->height;
+    return prefix_iterator(this->_base).get_height();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::prefix_reverse_iterator::get_balance() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->get_balance();
+    return prefix_iterator(this->_base).get_balance();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
@@ -817,17 +905,13 @@ AVL_tree<tkey, tvalue, compare>::prefix_const_reverse_iterator::prefix_const_rev
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::prefix_const_reverse_iterator::get_height() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->height;
+    return prefix_iterator(this->_base).get_height();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::prefix_const_reverse_iterator::get_balance() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->get_balance();
+    return prefix_iterator(this->_base).get_balance();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
@@ -893,17 +977,13 @@ parent::infix_const_iterator(it)
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::infix_const_iterator::get_height() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->height;
+    return infix_iterator(this->_base).get_height();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::infix_const_iterator::get_balance() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->get_balance();
+    return infix_iterator(this->_base).get_balance();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
@@ -928,17 +1008,13 @@ parent::infix_reverse_iterator(it)
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::infix_reverse_iterator::get_height() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->height;
+    return infix_iterator(this->_base).get_height();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::infix_reverse_iterator::get_balance() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->get_balance();
+    return infix_iterator(this->_base).get_balance();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
@@ -975,17 +1051,13 @@ parent::infix_const_reverse_iterator(it)
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::infix_const_reverse_iterator::get_height() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->height;
+    return infix_iterator(this->_base).get_height();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::infix_const_reverse_iterator::get_balance() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->get_balance();
+    return infix_iterator(this->_base).get_balance();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
@@ -1050,17 +1122,13 @@ parent::postfix_const_iterator(it)
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::postfix_const_iterator::get_height() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->height;
+    return postfix_iterator(this->_base).get_height();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::postfix_const_iterator::get_balance() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->get_balance();
+    return postfix_iterator(this->_base).get_balance();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
@@ -1085,17 +1153,13 @@ parent::postfix_reverse_iterator(it)
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::postfix_reverse_iterator::get_height() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->height;
+    return postfix_iterator(this->_base).get_height();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::postfix_reverse_iterator::get_balance() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->get_balance();
+    return postfix_iterator(this->_base).get_balance();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
@@ -1132,17 +1196,13 @@ parent::postfix_const_reverse_iterator(it)
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::postfix_const_reverse_iterator::get_height() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->height;
+    return postfix_iterator(this->_base).get_height();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 size_t AVL_tree<tkey, tvalue, compare>::postfix_const_reverse_iterator::get_balance() const noexcept
 {
-    const auto& base_it = this->_base;
-    if (!base_it._data) return 0;
-    return static_cast<node*>(base_it._data)->get_balance();
+    return postfix_iterator(this->_base).get_balance();
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
@@ -1468,19 +1528,17 @@ template<typename tkey, typename tvalue, compator<tkey> compare>
 AVL_tree<tkey, tvalue, compare>::AVL_tree(
         const compare& comp,
         pp_allocator<value_type> alloc,
-        logger* logger)
-{
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> AVL_tree<tkey, tvalue, compare>::AVL_tree(const compare& ,pp_allocator<value_type> ,logger* )", "your code should be here...");
-}
+        logger* logger):
+        parent(comp, alloc, logger)
+{}
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 AVL_tree<tkey, tvalue, compare>::AVL_tree(
         pp_allocator<value_type> alloc,
         const compare& comp,
-        logger* logger)
-{
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare>AVL_tree<tkey, tvalue, compare>::AVL_tree(pp_allocator<value_type> ,const compare& , logger* )", "your code should be here...");
-}
+        logger* logger):
+        parent(comp, alloc, logger)
+{}
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 template<input_iterator_for_pair<tkey, tvalue> iterator>
@@ -1488,9 +1546,12 @@ AVL_tree<tkey, tvalue, compare>::AVL_tree(
         iterator begin, iterator end,
         const compare& cmp,
         pp_allocator<value_type> alloc,
-        logger* logger)
+        logger* logger):
+        parent(cmp, alloc, logger)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> template<input_iterator_for_pair<tkey, tvalue> iterator> AVL_tree<tkey, tvalue, compare>::AVL_tree(iterator , iterator ,const compare& ,pp_allocator<value_type> ,logger* )", "your code should be here...");
+    for (auto it = begin; it != end; ++it){
+        this->insert(*it);
+    }
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
@@ -1499,35 +1560,49 @@ AVL_tree<tkey, tvalue, compare>::AVL_tree(
         Range&& range,
         const compare& cmp,
         pp_allocator<value_type> alloc,
-        logger* logger)
+        logger* logger):
+        parent(cmp, alloc, logger)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> template<std::ranges::input_range Range> AVL_tree<tkey, tvalue, compare>::AVL_tree(Range&& ,const compare& ,pp_allocator<value_type> ,logger* )", "your code should be here...");
+    for (const auto& item : range) {
+        insert(item);
+    }
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
-AVL_tree<tkey, tvalue, compare>::AVL_tree(std::initializer_list<std::pair<tkey, tvalue>> data,
-                                          const compare& cmp, pp_allocator<value_type> alloc,
-                                          logger* logger)
+AVL_tree<tkey, tvalue, compare>::AVL_tree(
+        std::initializer_list<std::pair<tkey, tvalue>> data,
+        const compare& cmp, pp_allocator<value_type> alloc,
+        logger* logger):
+    parent(cmp, alloc, logger)
 {
-    throw not_implemented("emplate<typename tkey, typename tvalue, compator<tkey> compare> AVL_tree<tkey, tvalue, compare>::AVL_tree(std::initializer_list<std::pair<tkey, tvalue>> , const compare& cmp, pp_allocator<value_type> , logger* )", "your code should be here...");
+    for (auto item = data.begin(); item != data.end(); ++item) {
+        insert(*item);
+    }
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
-AVL_tree<tkey, tvalue, compare>::AVL_tree(const AVL_tree& other)
+AVL_tree<tkey, tvalue, compare>::AVL_tree(const AVL_tree& other):
+parent(other._compare, other._allocator, other._logger)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> AVL_tree<tkey, tvalue, compare>::AVL_tree(const AVL_tree& )", "your code should be here...");
+    for (auto it = other.begin(); it != other.end(); ++it) {
+        insert(*it);
+    }
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 AVL_tree<tkey, tvalue, compare>& AVL_tree<tkey, tvalue, compare>::operator=(const AVL_tree& other)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> AVL_tree<tkey, tvalue, compare>& AVL_tree<tkey, tvalue, compare>::operator=(const AVL_tree& )", "your code should be here...");
+    if (this == &other) return *this;
+
+    AVL_tree temp(other);
+    this->swap(temp);
+    return *this;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 void AVL_tree<tkey, tvalue, compare>::swap(parent& other) noexcept
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> void AVL_tree<tkey, tvalue, compare>::swap(parent&) noexcept", "your code should be here...");
+    parent::swap(other);
 }
 
 // endregion AVL_tree constructors
@@ -1538,14 +1613,14 @@ template<typename tkey, typename tvalue, compator<tkey> compare>
 std::pair<typename AVL_tree<tkey, tvalue, compare>::infix_iterator, bool>
 AVL_tree<tkey, tvalue, compare>::insert(const value_type& value)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey>> std::pair<typename AVL_tree<tkey, tvalue, compare>::infix_iterator, bool> AVL_tree<tkey, tvalue, compare>::insert(const value_type&)", "your code should be here...");
+    return parent::insert(value);
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 std::pair<typename AVL_tree<tkey, tvalue, compare>::infix_iterator, bool>
 AVL_tree<tkey, tvalue, compare>::insert(value_type&& value)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey>> std::pair<typename AVL_tree<tkey, tvalue, compare>::infix_iterator, bool> AVL_tree<tkey, tvalue, compare>::insert(value_type&&)", "your code should be here...");
+    return insert(std::move(value));
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
@@ -1553,21 +1628,33 @@ template<class ...Args>
 std::pair<typename AVL_tree<tkey, tvalue, compare>::infix_iterator, bool>
 AVL_tree<tkey, tvalue, compare>::emplace(Args&&... args)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> template<class ...Args> std::pair<typename AVL_tree<tkey, tvalue, compare>::infix_iterator, bool> AVL_tree<tkey, tvalue, compare>::emplace(Args&&...)", "your code should be here...");
+    value_type value(std::forward<Args>(args)...);
+    return insert(value);
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_iterator
 AVL_tree<tkey, tvalue, compare>::insert_or_assign(const value_type& value)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_iterator AVL_tree<tkey, tvalue, compare>::insert_or_assign(const value_type&)", "your code should be here...");
+    auto res = insert(value);
+    if (res.second == false) {
+        res.first->data.second = value.second;
+    }
+
+    return res.first;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_iterator
 AVL_tree<tkey, tvalue, compare>::insert_or_assign(value_type&& value)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_iterator AVL_tree<tkey, tvalue, compare>::insert_or_assign(value_type&&)", "your code should be here...");
+    auto moved_val = std::move(value.second);
+    auto res = insert(std::move(value));
+    if (!res.second) {
+        res.first->second = std::move(moved_val);
+    }
+
+    return res.first;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
@@ -1575,77 +1662,74 @@ template<class ...Args>
 typename AVL_tree<tkey, tvalue, compare>::infix_iterator
 AVL_tree<tkey, tvalue, compare>::emplace_or_assign(Args&&... args)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> template<class ...Args> typename AVL_tree<tkey, tvalue, compare>::infix_iterator AVL_tree<tkey, tvalue, compare>::emplace_or_assign(Args&&...)", "your code should be here...");
+    value_type value(std::forward<Args>(args)...);
+    return insert_or_assign(std::move(value));
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_iterator
 AVL_tree<tkey, tvalue, compare>::find(const tkey& key)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_iterator AVL_tree<tkey, tvalue, compare>::find(const tkey&)", "your code should be here...");
+    return infix_iterator(parent::find(key));
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_const_iterator
 AVL_tree<tkey, tvalue, compare>::find(const tkey& key) const
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_const_iterator AVL_tree<tkey, tvalue, compare>::find(const tkey&) const", "your code should be here...");
+    return infix_const_iterator(parent::find(key));
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_iterator
 AVL_tree<tkey, tvalue, compare>::lower_bound(const tkey& key)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_iterator AVL_tree<tkey, tvalue, compare>::lower_bound(const tkey&)", "your code should be here...");
+    return infix_iterator(parent::lower_bound(key));
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_const_iterator
 AVL_tree<tkey, tvalue, compare>::lower_bound(const tkey& key) const
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_const_iterator AVL_tree<tkey, tvalue, compare>::lower_bound(const tkey&) const", "your code should be here...");
+    return infix_const_iterator(parent::lower_bound(key));
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_iterator
 AVL_tree<tkey, tvalue, compare>::upper_bound(const tkey& key)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_iterator AVL_tree<tkey, tvalue, compare>::upper_bound(const tkey&)", "your code should be here...");
+    return infix_iterator(parent::upper_bound(key));
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_const_iterator
 AVL_tree<tkey, tvalue, compare>::upper_bound(const tkey& key) const
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_const_iterator AVL_tree<tkey, tvalue, compare>::upper_bound(const tkey&) const", "your code should be here...");
+    return infix_const_iterator(parent::upper_bound(key));
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_iterator
-AVL_tree<tkey, tvalue, compare>::erase(infix_iterator pos)
-{
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_iterator AVL_tree<tkey, tvalue, compare>::erase(infix_iterator)", "your code should be here...");
+AVL_tree<tkey, tvalue, compare>::erase(infix_iterator pos) {
+    return parent::erase(pos);
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_iterator
-AVL_tree<tkey, tvalue, compare>::erase(infix_const_iterator pos)
-{
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_iterator AVL_tree<tkey, tvalue, compare>::erase(infix_const_iterator)", "your code should be here...");
+AVL_tree<tkey, tvalue, compare>::erase(infix_const_iterator pos) {
+    return parent::erase(pos);
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_iterator
-AVL_tree<tkey, tvalue, compare>::erase(infix_iterator first, infix_iterator last)
-{
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_iterator AVL_tree<tkey, tvalue, compare>::erase(infix_iterator, infix_iterator)", "your code should be here...");
+AVL_tree<tkey, tvalue, compare>::erase(infix_iterator first, infix_iterator last) {
+    return parent::erase(first, last);
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>
 typename AVL_tree<tkey, tvalue, compare>::infix_iterator
-AVL_tree<tkey, tvalue, compare>::erase(infix_const_iterator first, infix_const_iterator last)
-{
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare> typename AVL_tree<tkey, tvalue, compare>::infix_iterator AVL_tree<tkey, tvalue, compare>::erase(infix_const_iterator, infix_const_iterator)", "your code should be here...");
+AVL_tree<tkey, tvalue, compare>::erase(infix_const_iterator first, infix_const_iterator last) {
+    return parent::erase(first, last);
 }
 
 // endregion AVL_tree methods

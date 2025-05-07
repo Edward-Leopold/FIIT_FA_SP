@@ -2429,6 +2429,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert(const value_type& value)
 
     ++_size;
 
+    __detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
     return std::make_pair(infix_iterator(new_node), true);
 }
 
@@ -2483,13 +2484,13 @@ template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator
 binary_search_tree<tkey, tvalue, compare, tag>::insert_or_assign(value_type&& value)
 {
-    auto moved_val = std::move(value.second);
-    auto res = insert(std::move(value));
-    if (!res.second) {
-        res.first->second = std::move(moved_val);
-    }
+        auto moved_val = std::move(value.second);
+        auto res = insert(std::move(value));
+        if (!res.second) {
+            res.first->second = std::move(moved_val);
+        }
 
-    return res.first;
+        return res.first;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
@@ -2658,6 +2659,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::upper_bound(const tkey& key) con
 
     return infix_const_iterator(result);
 }
+
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_iterator
 binary_search_tree<tkey, tvalue, compare, tag>::erase(infix_iterator pos)
