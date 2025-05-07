@@ -3308,7 +3308,9 @@ namespace __detail {
     }
 
     template<typename tkey, typename tvalue, typename compare, typename tag>
-    void bst_impl<tkey, tvalue, compare, tag>::delete_node(binary_search_tree<tkey, tvalue, compare, tag>& cont, typename binary_search_tree<tkey, tvalue, compare, tag>::node** node)
+    void bst_impl<tkey, tvalue, compare, tag>::delete_node(
+        binary_search_tree<tkey, tvalue, compare, tag>& cont,
+        typename binary_search_tree<tkey, tvalue, compare, tag>::node** node)
     {
         using node_type = typename binary_search_tree<tkey, tvalue, compare, tag>::node;
         if (node){
