@@ -363,10 +363,10 @@ private:
 
         while (begin < end) {
             size_t mid = begin + (end - begin) / 2;
-            int cmp = compare_keys(key, node->_keys[mid].first);
-            if (cmp > 0) {
+
+            if (compare_keys(node->_keys[mid].first, key)) {
                 begin = mid + 1;
-            } else if (cmp < 0) {
+            } else if (compare_keys(key, node->_keys[mid].first)) {
                 end = mid;
             } else {
                 return {mid, true};
@@ -472,7 +472,7 @@ private:
         size_t index = 0;
         bool found = false;
 
-        while (!found && !is_terma(*path.top().first)) {
+        while (!found) {
             auto [i, f] = find_index(key, current_node); // find_index shows at what index passed key might be in current_node
             index = i;
             found = f;
@@ -809,9 +809,9 @@ B_tree<tkey, tvalue, compare, t>::B_tree(
         pp_allocator<value_type> alloc,
         logger* logger): _root(nullptr), _size(0), _allocator(alloc), _logger(logger), compare(cmp)
 {
-            for (const auto& temp: data) {
-                emplace(temp.first, temp.second);
-            }
+        for (const auto& temp: data) {
+            emplace(temp.first, temp.second);
+        }
 }
 
 // endregion constructors implementation
@@ -1612,25 +1612,104 @@ typename B_tree<tkey, tvalue, compare, t>::btree_const_iterator B_tree<tkey, tva
 template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>
 typename B_tree<tkey, tvalue, compare, t>::btree_iterator B_tree<tkey, tvalue, compare, t>::lower_bound(const tkey& key)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t> typename B_tree<tkey, tvalue, compare, t>::btree_iterator B_tree<tkey, tvalue, compare, t>::lower_bound(const tkey& key)", "your code should be here...");
+    auto [path, index_found] = find_path(key);
+    auto [index, found] = index_found;
+
+    if (found) {
+        return btree_iterator(std::move(path), index);
+    }
+
+    // Иначе, элемент не найден, но path указывает на место куда бы он встал
+    // Надо проверить, не вышли ли мы за пределы последней ноды
+    if (path.empty()) { // need check
+        return end();
+    }
+
+    btree_node* node = *path.top().first;
+    if (index < node->_keys.size()) {
+        return btree_iterator(std::move(path), index);
+    }
+
+    // Если index == size, то мы вышли за границу, нужно продвинуться к следующему валидному элементу
+    btree_iterator it(std::move(path), index);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>
 typename B_tree<tkey, tvalue, compare, t>::btree_const_iterator B_tree<tkey, tvalue, compare, t>::lower_bound(const tkey& key) const
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t> typename B_tree<tkey, tvalue, compare, t>::btree_const_iterator B_tree<tkey, tvalue, compare, t>::lower_bound(const tkey& key) const", "your code should be here...");
+    auto [path, index_found] = find_path(key);
+    auto [index, found] = index_found;
+
+    if (found) {
+        return btree_const_iterator(std::move(path), index);
+    }
+
+    if (path.empty()) { // need check
+        return end();
+    }
+
+    btree_node* node = *path.top().first;
+    if (index < node->_keys.size()) {
+        return btree_const_iterator(std::move(path), index);
+    }
+
+    btree_const_iterator it(std::move(path), index);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>
 typename B_tree<tkey, tvalue, compare, t>::btree_iterator B_tree<tkey, tvalue, compare, t>::upper_bound(const tkey& key)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t> typename B_tree<tkey, tvalue, compare, t>::btree_iterator B_tree<tkey, tvalue, compare, t>::upper_bound(const tkey& key)", "your code should be here...");
+    auto [path, index_found] = find_path(key);
+    auto [index, found] = index_found;
+
+    if (path.empty()) { // need check
+        return end();
+    }
+    if (found) {
+        auto it = btree_iterator(std::move(path), index);
+        ++it;
+        return it;
+    }
+
+    btree_node* node = *path.top().first;
+    if (index < node->_keys.size()) {
+        return btree_iterator(std::move(path), index);
+    }
+
+    // Если index == size, то мы вышли за границу, нужно продвинуться к следующему валидному элементу
+    btree_iterator it(std::move(path), index);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>
 typename B_tree<tkey, tvalue, compare, t>::btree_const_iterator B_tree<tkey, tvalue, compare, t>::upper_bound(const tkey& key) const
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t> typename B_tree<tkey, tvalue, compare, t>::btree_const_iterator B_tree<tkey, tvalue, compare, t>::upper_bound(const tkey& key) const", "your code should be here...");
+    auto [path, index_found] = find_path(key);
+    auto [index, found] = index_found;
+
+    if (path.empty()) { // need check
+        return end();
+    }
+    if (found) {
+        auto it = btree_const_iterator(std::move(path), index);
+        ++it;
+        return it;
+    }
+
+    btree_node* node = *path.top().first;
+    if (index < node->_keys.size()) {
+        return btree_const_iterator(std::move(path), index);
+    }
+
+    // Если index == size, то мы вышли за границу, нужно продвинуться к следующему валидному элементу
+    btree_const_iterator it(std::move(path), index);
+    ++it;
+    return it;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>
@@ -1656,8 +1735,8 @@ B_tree<tkey, tvalue, compare, t>::insert(const tree_data_type& data)
 {
     auto [path, index_found] = find_path(data.first);
     auto [index, found] = index_found;
-    if (found == true) {
-        return {btree_iterator(path, index), false}; // such key already exists
+    if (found) { // key already exists
+        return {btree_iterator(std::move(path), index), false};
     }
     auto [inserted_path, inserted_index] = insert_inside(data, std::move(path));
     return {btree_iterator(std::move(inserted_path), inserted_index), true};
@@ -1669,8 +1748,8 @@ B_tree<tkey, tvalue, compare, t>::insert(tree_data_type&& data)
 {
     auto [path, index_found] = find_path(data.first);
     auto [index, found] = index_found;
-    if (found == true) {
-        return {btree_iterator(path, index), false}; // such key already exists
+    if (found) {
+        return {btree_iterator(std::move(path), index), false};
     }
     auto [inserted_path, inserted_index] = insert_inside(std::move(data), std::move(path));
     return {btree_iterator(std::move(inserted_path), inserted_index), true};
@@ -1681,28 +1760,30 @@ template<typename... Args>
 std::pair<typename B_tree<tkey, tvalue, compare, t>::btree_iterator, bool>
 B_tree<tkey, tvalue, compare, t>::emplace(Args&&... args)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>\n"
-                          "template<typename... Args>\n"
-                          "std::pair<typename B_tree<tkey, tvalue, compare, t>::btree_iterator, bool>\n"
-                          "B_tree<tkey, tvalue, compare, t>::emplace(Args&&... args)", "your code should be here...");
+    tree_data_type value(std::forward<Args>(args)...);
+    return insert(value);
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>
 typename B_tree<tkey, tvalue, compare, t>::btree_iterator
 B_tree<tkey, tvalue, compare, t>::insert_or_assign(const tree_data_type& data)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>\n"
-                          "typename B_tree<tkey, tvalue, compare, t>::btree_iterator\n"
-                          "B_tree<tkey, tvalue, compare, t>::insert_or_assign(const tree_data_type& data)", "your code should be here...");
+    auto [iter, is_inserted] = insert(data);
+    if (!is_inserted) { // the key existed before
+        (*iter).second = data.second;
+    }
+    return iter;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>
 typename B_tree<tkey, tvalue, compare, t>::btree_iterator
 B_tree<tkey, tvalue, compare, t>::insert_or_assign(tree_data_type&& data)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>\n"
-                          "typename B_tree<tkey, tvalue, compare, t>::btree_iterator\n"
-                          "B_tree<tkey, tvalue, compare, t>::insert_or_assign(tree_data_type&& data)", "your code should be here...");
+    auto [iter, is_inserted] = insert(std::move(data));
+    if (!is_inserted) {
+        (*iter).second = std::move(data.second);
+    }
+    return iter;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>
@@ -1710,10 +1791,8 @@ template<typename... Args>
 typename B_tree<tkey, tvalue, compare, t>::btree_iterator
 B_tree<tkey, tvalue, compare, t>::emplace_or_assign(Args&&... args)
 {
-    throw not_implemented("template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>\n"
-                          "template<typename... Args>\n"
-                          "typename B_tree<tkey, tvalue, compare, t>::btree_iterator\n"
-                          "B_tree<tkey, tvalue, compare, t>::emplace_or_assign(Args&&... args)", "your code should be here...");
+    tree_data_type value(std::forward<Args>(args)...);
+    return insert_or_assign(std::move(value));
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, std::size_t t>
