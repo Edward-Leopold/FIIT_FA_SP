@@ -733,16 +733,18 @@ namespace __detail
             }
 
             bst_node* temp_subtree = *temp_subtree_ptr;
+            balance_from = temp_subtree;
 
-            if (temp_subtree->parent->left_subtree == temp_subtree)
-                temp_subtree->parent->left_subtree = temp_subtree->right_subtree;
-            else
-                temp_subtree->parent->right_subtree = temp_subtree->right_subtree;
+            if (temp_subtree->parent != node) {
+                temp_subtree->parent->right_subtree = temp_subtree->left_subtree;
+                if (temp_subtree->left_subtree) {
+                    temp_subtree->left_subtree->parent = temp_subtree->parent;
+                }
 
-            if (temp_subtree->right_subtree)
-                temp_subtree->right_subtree->parent = temp_subtree->parent;
+                balance_from = temp_subtree->parent;
+            }
 
-            temp_subtree->left_subtree = node->left_subtree;
+            temp_subtree->left_subtree = (node->left_subtree == temp_subtree) ? temp_subtree->left_subtree : node->left_subtree;
             if (temp_subtree->left_subtree)
                 temp_subtree->left_subtree->parent = temp_subtree;
 
@@ -762,7 +764,7 @@ namespace __detail
             }
 
             static_cast<avl_node*>(temp_subtree)->recalculate_height();
-            balance_from = temp_subtree->parent;
+
         }
 
         delete_node(cont, node_ptr);
@@ -790,17 +792,11 @@ namespace __detail
                     }
 
 
-                    // avl_node* new_root = static_cast<avl_node*>(subtree_ref);
-                    // if (new_root->left_subtree) static_cast<avl_node*>(new_root->left_subtree)->recalculate_height();
-                    // if (new_root->right_subtree) static_cast<avl_node*>(new_root->right_subtree)->recalculate_height();
-                    // new_root->recalculate_height();
-                    // current = new_root;
-
-                    right->recalculate_height();
-                    static_cast<avl_node*>(current)->recalculate_height();
-                    if (current->parent) {
-                        static_cast<avl_node*>(current->parent)->recalculate_height();
-                    }
+                    avl_node* new_root = static_cast<avl_node*>(subtree_ref);
+                    if (new_root->left_subtree) static_cast<avl_node*>(new_root->left_subtree)->recalculate_height();
+                    if (new_root->right_subtree) static_cast<avl_node*>(new_root->right_subtree)->recalculate_height();
+                    new_root->recalculate_height();
+                    current = new_root;
                 }
                 // левый перекос
                 else if (balance == -2) {
@@ -811,17 +807,11 @@ namespace __detail
                         cont.small_right_rotation(subtree_ref);
                     }
 
-                    // avl_node* new_root = static_cast<avl_node*>(subtree_ref);
-                    // if (new_root->left_subtree) static_cast<avl_node*>(new_root->left_subtree)->recalculate_height();
-                    // if (new_root->right_subtree) static_cast<avl_node*>(new_root->right_subtree)->recalculate_height();
-                    // new_root->recalculate_height();
-                    // current = new_root;
-
-                    left->recalculate_height();
-                    static_cast<avl_node*>(current)->recalculate_height();
-                    if (current->parent) {
-                        static_cast<avl_node*>(current->parent)->recalculate_height();
-                    }
+                    avl_node* new_root = static_cast<avl_node*>(subtree_ref);
+                    if (new_root->left_subtree) static_cast<avl_node*>(new_root->left_subtree)->recalculate_height();
+                    if (new_root->right_subtree) static_cast<avl_node*>(new_root->right_subtree)->recalculate_height();
+                    new_root->recalculate_height();
+                    current = new_root;
                 }
 
                 current = static_cast<avl_node*>(current->parent);
