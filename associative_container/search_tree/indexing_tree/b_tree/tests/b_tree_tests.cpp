@@ -98,9 +98,17 @@ bool infix_const_iterator_test(
     for (auto const &item: expected_result)
     {
         auto data = *it;
+        std::cout << "got (depth=" << it.depth() << ", index=" << it.index() << ",  key=" << it->first << ", value=" << it->second << ")\n";
 
-        if (it->first != item.key || it->second != item.value || it.depth() != item.depth || it.index() != item.index)
+        if (
+            it->first != item.key ||
+            it->second != item.value ||
+            it.depth() != item.depth ||
+            it.index() != item.index)
         {
+            std::cerr << "FAIL at key " << item.key
+                  << ": expected (depth=" << item.depth << ", value=" << item.value << ", index=" << item.index << ")"
+                  << ", got (depth=" << it.depth() << ", value=" << it->second << ", index=" << it.index() << ")\n";
             return false;
         }
 
@@ -286,11 +294,14 @@ TEST(bTreePositiveTests, test4)
     tree.emplace(15, std::string("c"));
     tree.emplace(3, std::string("d"));
     tree.emplace(4, std::string("e"));
+
     tree.emplace(100, std::string("f"));
     tree.emplace(24, std::string("g"));
     tree.emplace(456, std::string("h"));
     tree.emplace(101, std::string("j"));
+
     tree.emplace(45, std::string("k"));
+    tree.print_tree(); // опять какая-то хуйня после второго сплита, надо перепроверять, вывод дерева уходит в бесконечный цикл
     tree.emplace(193, std::string("l"));
     tree.emplace(534, std::string("m"));
 
