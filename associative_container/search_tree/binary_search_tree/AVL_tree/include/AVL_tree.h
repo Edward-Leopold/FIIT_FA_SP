@@ -33,6 +33,7 @@ class AVL_tree final:
     public binary_search_tree<tkey, tvalue, compare, __detail::AVL_TAG>
 {
     using parent = binary_search_tree<tkey, tvalue, compare, __detail::AVL_TAG>;
+    friend class __detail::bst_impl<tkey, tvalue, compare, __detail::AVL_TAG>;
 private:
     
     struct node final: public parent::node
@@ -193,7 +194,7 @@ public:
         using parent::infix_iterator::operator->;
     };
 
-    class infix_const_iterator : parent::infix_const_iterator
+    class infix_const_iterator : public parent::infix_const_iterator
     {
     public:
 
@@ -612,7 +613,7 @@ namespace __detail
     binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node* bst_impl<tkey, tvalue, compare, AVL_TAG>::create_node(
             binary_search_tree <tkey, tvalue, compare, AVL_TAG> &cont, Args &&...args)
     {
-        using node_type = typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node;
+        using node_type = typename AVL_tree<tkey, tvalue, compare>::node;
 
         node_type* new_node = cont._allocator.template new_object<node_type>(std::forward<Args>(args)...);
         return new_node;
@@ -637,41 +638,65 @@ namespace __detail
     {
         if (!node || !*node) return;
 
-        auto* current = (*node)->parent;
+        using avl_node = typename AVL_tree<tkey, tvalue, compare>::node;
+        using bst_node = typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node;
+
+        auto* current = static_cast<avl_node*>((*node)->parent);
 
         while (current != nullptr) {
             current->recalculate_height();
             short balance = current->get_balance();
 
+            bst_node*& subtree_ref =
+            (current->parent == nullptr)
+                ? cont._root
+                : (current->parent->left_subtree == current
+                    ? current->parent->left_subtree
+                    : current->parent->right_subtree);
+
             // правый перекос
             if (balance == 2) {
-                if (current->right_subtree->get_balance() == -1) {
-                    cont.big_left_rotation(current);
+                auto* right = static_cast<avl_node*>(current->right_subtree);
+                if (right && right->get_balance() == -1) {
+                    cont.big_left_rotation(subtree_ref);
                 } else {
-                    cont.small_left_rotation(current);
+                    cont.small_left_rotation(subtree_ref);
                 }
+
+                avl_node* new_root = static_cast<avl_node*>(subtree_ref);
+                if (new_root->left_subtree) static_cast<avl_node*>(new_root->left_subtree)->recalculate_height();
+                if (new_root->right_subtree) static_cast<avl_node*>(new_root->right_subtree)->recalculate_height();
+                new_root->recalculate_height();
             }
             // левый перекос
             else if (balance == -2) {
-                if (current->left_subtree->get_balance() == 1) {
-                    cont.big_right_rotation(current);
+                auto* left = static_cast<avl_node*>(current->left_subtree);
+                if (left && left->get_balance() == 1) {
+                    cont.big_right_rotation(subtree_ref);
                 }else {
-                    cont.small_right_rotation(current);
+                    cont.small_right_rotation(subtree_ref);
                 }
+
+                avl_node* new_root = static_cast<avl_node*>(subtree_ref);
+                if (new_root->left_subtree) static_cast<avl_node*>(new_root->left_subtree)->recalculate_height();
+                if (new_root->right_subtree) static_cast<avl_node*>(new_root->right_subtree)->recalculate_height();
+                new_root->recalculate_height();
             }
 
-            current = current->parent;
+            current = static_cast<avl_node*>(current->parent);
         }
     }
+
 
     template<typename tkey, typename tvalue, typename compare>
     void bst_impl<tkey, tvalue, compare, AVL_TAG>::erase(
             binary_search_tree <tkey, tvalue, compare, AVL_TAG> &cont,
             typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node **node_ptr)
     {
-        using node_type = typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node;
-        node_type* node = *node_ptr;
-        node_type* balance_from = nullptr;
+        using avl_node = typename AVL_tree<tkey, tvalue, compare>::node;
+        using bst_node = typename binary_search_tree<tkey, tvalue, compare, AVL_TAG>::node;
+        bst_node* node = *node_ptr;
+        bst_node* balance_from = nullptr;
         if (!node) return;
 
         if (!node->left_subtree && !node->right_subtree) { // leaf or root
@@ -687,7 +712,7 @@ namespace __detail
             }
         }
         else if ((node->left_subtree && !node->right_subtree) || (node->right_subtree && !node->left_subtree)) { // only one subtree
-            node_type* child = node->left_subtree ? node->left_subtree : node->right_subtree;
+            bst_node* child = node->left_subtree ? node->left_subtree : node->right_subtree;
             balance_from = node->parent;
 
             if (node->parent) {
@@ -702,12 +727,12 @@ namespace __detail
             child->parent = node->parent;
         }
         else { // two childs: left and right subtrees
-            node_type** temp_subtree_ptr = &(node->left_subtree);
+            bst_node** temp_subtree_ptr = &(node->left_subtree);
             while ((*temp_subtree_ptr)->right_subtree) {
                 temp_subtree_ptr = &((*temp_subtree_ptr)->right_subtree);
             }
 
-            node_type* temp_subtree = *temp_subtree_ptr;
+            bst_node* temp_subtree = *temp_subtree_ptr;
 
             if (temp_subtree->parent->left_subtree == temp_subtree)
                 temp_subtree->parent->left_subtree = temp_subtree->right_subtree;
@@ -736,12 +761,73 @@ namespace __detail
                 cont._root = temp_subtree;
             }
 
+            static_cast<avl_node*>(temp_subtree)->recalculate_height();
             balance_from = temp_subtree->parent;
         }
 
         delete_node(cont, node_ptr);
-        if (balance_from)
-            post_insert(cont, &balance_from);
+        if (balance_from) {
+            auto* current = static_cast<avl_node*>(balance_from);
+
+            while (current != nullptr) {
+                current->recalculate_height();
+                short balance = current->get_balance();
+
+                bst_node*& subtree_ref =
+                    (current->parent == nullptr)
+                        ? cont._root
+                        : (current->parent->left_subtree == current
+                            ? current->parent->left_subtree
+                            : current->parent->right_subtree);
+
+                // правый перекос
+                if (balance == 2) {
+                    auto* right = static_cast<avl_node*>(current->right_subtree);
+                    if (right && right->get_balance() == -1) {
+                        cont.big_left_rotation(subtree_ref);
+                    } else {
+                        cont.small_left_rotation(subtree_ref);
+                    }
+
+
+                    // avl_node* new_root = static_cast<avl_node*>(subtree_ref);
+                    // if (new_root->left_subtree) static_cast<avl_node*>(new_root->left_subtree)->recalculate_height();
+                    // if (new_root->right_subtree) static_cast<avl_node*>(new_root->right_subtree)->recalculate_height();
+                    // new_root->recalculate_height();
+                    // current = new_root;
+
+                    right->recalculate_height();
+                    static_cast<avl_node*>(current)->recalculate_height();
+                    if (current->parent) {
+                        static_cast<avl_node*>(current->parent)->recalculate_height();
+                    }
+                }
+                // левый перекос
+                else if (balance == -2) {
+                    auto* left = static_cast<avl_node*>(current->left_subtree);
+                    if (left && left->get_balance() == 1) {
+                        cont.big_right_rotation(subtree_ref);
+                    }else {
+                        cont.small_right_rotation(subtree_ref);
+                    }
+
+                    // avl_node* new_root = static_cast<avl_node*>(subtree_ref);
+                    // if (new_root->left_subtree) static_cast<avl_node*>(new_root->left_subtree)->recalculate_height();
+                    // if (new_root->right_subtree) static_cast<avl_node*>(new_root->right_subtree)->recalculate_height();
+                    // new_root->recalculate_height();
+                    // current = new_root;
+
+                    left->recalculate_height();
+                    static_cast<avl_node*>(current)->recalculate_height();
+                    if (current->parent) {
+                        static_cast<avl_node*>(current->parent)->recalculate_height();
+                    }
+                }
+
+                current = static_cast<avl_node*>(current->parent);
+            }
+
+        }
     }
 }
 
@@ -763,10 +849,10 @@ void __detail::bst_impl<tkey, tvalue, compare, __detail::AVL_TAG>::swap(
 template<typename tkey, typename tvalue, compator<tkey> compare>
 void AVL_tree<tkey, tvalue, compare>::node::recalculate_height() noexcept
 {
-    const size_t left_height = this->left_subtree ? static_cast<AVL_tree<tkey, tvalue, compare>::node*>(this->left_subtree)->height : 0;
-    const size_t right_height = this->right_subtree ? static_cast<AVL_tree<tkey, tvalue, compare>::node*>(this->right_subtree)->height : 0;
+    const size_t left_height = this->left_subtree ? static_cast<node*>(this->left_subtree)->height : 0;
+    const size_t right_height = this->right_subtree ? static_cast<node*>(this->right_subtree)->height : 0;
 
-    height = std::max(left_height, right_height) + 1;
+    this->height = std::max(left_height, right_height) + 1;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare>

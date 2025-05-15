@@ -72,14 +72,24 @@ bool infix_iterator_test(
 {
     auto end_infix = tree.cend_infix();
     auto it = tree.cbegin_infix();
+    auto other_it = it;
+
+    std::cout << "begin tree: " <<&tree << std::endl;
+    for (; other_it != end_infix; ++other_it) {
+        std::cout << "  depth=" << other_it.depth() << "  key=" << other_it->first << "  height=" << other_it.get_height() << std::endl;
+    }
+    std::cout << "end tree: " <<&tree << std::endl;
+
 
     auto vec_begin =  expected_result.begin(), vec_end = expected_result.end();
-
     for (; vec_begin != vec_end; ++vec_begin)
     {
         auto& item = *vec_begin;
         if (it.depth() != item.depth || it->first != item.key || it->second != item.value || it.get_height() != item.height)
         {
+            std::cerr << "FAIL at key " << item.key
+                  << ": expected (depth=" << item.depth << " key=" << item.key << " value=" << item.value << " height=" << item.height << ")"
+                  << ", got (depth=" << it.depth() << " key=" << it->first << " value=" << it->second << " height=" << it.get_height() << ")\n";
             return false;
         }
 
