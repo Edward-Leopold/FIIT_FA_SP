@@ -9,6 +9,9 @@ TEST(allocatorGlobalHeapTests, test1)
     
     std::unique_ptr<logger> logger_instance(logger_builder_instance
         ->add_file_stream("gh_alc_test1_logs.txt", logger::severity::debug)
+        .add_console_stream(logger::severity::debug)
+        .add_console_stream(logger::severity::trace)
+        .add_console_stream(logger::severity::error)
         .build());
 
     std::unique_ptr<smart_mem_resource> allocator_instance(new allocator_global_heap(logger_instance.get()));
@@ -24,6 +27,9 @@ TEST(allocatorGlobalHeapTests, test2)
 
     std::unique_ptr<logger> logger_instance(logger_builder_instance
         ->add_file_stream("gh_alc_test2_logs.txt", logger::severity::debug)
+        .add_console_stream(logger::severity::debug)
+        .add_console_stream(logger::severity::trace)
+        .add_console_stream(logger::severity::error)
         .build());
 
     std::unique_ptr<smart_mem_resource> allocator_instance(new allocator_global_heap(logger_instance.get()));

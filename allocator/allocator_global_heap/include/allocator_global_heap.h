@@ -51,11 +51,15 @@ public:
 
 private:
     
-    inline logger *get_logger() const override;
+    inline logger *get_logger() const override {
+        return _logger;
+    }
 
 private:
     
-    inline std::string get_typename() const override;
+    inline std::string get_typename() const override {
+        return "allocator_global_heap";
+    }
 
 public:
 
