@@ -406,10 +406,6 @@ private:
         // Если мы сплитим корень
         if (path.size() == 1) {
             auto* new_root =  _allocator.template new_object<btree_node>();
-            std::cout << "new root: " << new_root->_keys.capacity() << std::endl;
-            std::cout << "new root: " << new_root->_pointers.capacity() << std::endl;
-            std::cout << "new root: " << new_root->_keys.size() << std::endl;
-            std::cout << "new root: " << new_root->_pointers.size() << std::endl;
             new_root->_keys.push_back(middle_pair);
             new_root->_pointers.push_back(current);
             new_root->_pointers.push_back(new_node);
@@ -422,6 +418,7 @@ private:
 
             btree_node* parent = *path.top().first;
             auto [middle_pair_index_in_parent, found] = find_index(middle_pair.first, parent);
+            // size_t middle_pair_index_in_parent = path.top().second;
 
             // print_tree(parent);
             std::cout << "parent: " << parent << std::endl;
@@ -430,32 +427,38 @@ private:
 
             // Вставляем в родителя значение и правый указатель
             parent->_keys.insert(parent->_keys.begin() + middle_pair_index_in_parent, middle_pair);
-            parent->_pointers[middle_pair_index_in_parent] = current;
             parent->_pointers.insert(parent->_pointers.begin() + middle_pair_index_in_parent + 1, new_node);
-            // parent->_pointers[ middle_pair_index_in_parent + 1] = new_node;
-            std::cout << "parent keys size: "<< parent->_keys.size() << std::endl;
-            std::cout << "parent pointers size: "<< parent->_pointers.size() << std::endl;
 
-            std::cout << "parent: " << parent << std::endl;
-            std::cout << "current: " << current << std::endl;
-            std::cout << "new_node: " << new_node << std::endl;
-
-            std::cout << parent << std::endl;
-            for (auto ind: parent->_keys) {
-                std::cout << ind.first << std::endl;
-            }
-            for (auto n: parent->_pointers) {
-                std::cout << n << std::endl;
-                for (auto ind: n->_keys) {
-                    std::cout << "    " << ind.first << std::endl;
-                }
-            }
+            // std::cout << "parent keys size: "<< parent->_keys.size() << std::endl;
+            // std::cout << "parent pointers size: "<< parent->_pointers.size() << std::endl;
+            // std::cout << "parent: " << parent << std::endl;
+            // std::cout << "current: " << current << std::endl;
+            // std::cout << "new_node: " << new_node << std::endl;
+            //
+            // std::cout << parent << std::endl;
+            // for (auto ind: parent->_keys) {
+            //     std::cout << ind.first << std::endl;
+            // }
+            // for (auto n: parent->_pointers) {
+            //     std::cout << n << std::endl;
+            //     for (auto ind: n->_keys) {
+            //         std::cout << "    " << ind.first << std::endl;
+            //     }
+            // }
 
             // Обновляем ссылку на текущий узел
-            node = parent;
-            index = middle_pair_index_in_parent;
+            if (node == current) {
+                if (index == mid_index) {
+                    node = parent;
+                    index = middle_pair_index_in_parent;
+                } else if (index > mid_index) {
+                    node = new_node;
+                    index -= (mid_index + 1);
+                }
+            }
             path.top().second = middle_pair_index_in_parent;
-            print_tree(parent);
+
+            // print_tree(parent);
         }
     }
 
@@ -510,10 +513,9 @@ private:
 
         current_node->_keys.insert(current_node->_keys.begin() + index, std::move(data));
         _size++;
-        std::cerr << "_keys.size() of top node: " << current_node->_keys.size() << std::endl;
         while (!path.empty()) {
             btree_node*& node = *path.top().first;
-            std::cerr << "_keys.size() of node: " << node->_keys.size() << std::endl;
+            // std::cerr << "_keys.size() of node: " << node->_keys.size() << std::endl;
             if (node->_keys.size() <= maximum_keys_in_node) break;
             split_node(path, node, index); // need to check if current_node updates after split
         }
@@ -618,14 +620,14 @@ private:
             index = i;
             found = f;
 
-            if (index == 0 || is_terma(current_node)) {
-                path.push(std::make_pair(node_ptr, index));
-            } else {
-                path.push(std::make_pair(node_ptr, index - 1));
-            }
-            if (is_terma(current_node)) break;
-            // path.push({&current_node, index});
+            // if (index == 0 || is_terma(current_node)) {
+            //     path.push(std::make_pair(node_ptr, index));
+            // } else {
+            //     path.push(std::make_pair(node_ptr, index - 1));
+            // }
             // if (is_terma(current_node)) break;
+            path.push({node_ptr, index});
+            if (is_terma(current_node)) break;
             //
             node_ptr = &current_node->_pointers[index];
         }
@@ -637,16 +639,16 @@ private:
     void print_tree(const btree_node* node, int depth = 0) const {
         if (!node) return;
 
-        std::cout << node << std::endl;
-        for (auto ind: node->_keys) {
-            std::cout << ind.first << std::endl;
-        }
-        for (auto n: node->_pointers) {
-            std::cout << n << std::endl;
-            for (auto ind: n->_keys) {
-                std::cout << "    " << ind.first << std::endl;
-            }
-        }
+        // std::cout << node << std::endl;
+        // for (auto ind: node->_keys) {
+        //     std::cout << ind.first << std::endl;
+        // }
+        // for (auto n: node->_pointers) {
+        //     std::cout << n << std::endl;
+        //     for (auto ind: n->_keys) {
+        //         std::cout << "    " << ind.first << std::endl;
+        //     }
+        // }
 
         std::string indent(depth * 2, ' ');
         std::cout << indent << "Node at depth " << depth << ": ";
@@ -1266,7 +1268,7 @@ B_tree<tkey, tvalue, compare, t>::btree_const_iterator::operator++()
             _path.pop();
         }
     } else {
-        _path.push({&(*(_path.top().first))->_pointers[_index + 1], 0});
+        _path.push({&(*(_path.top().first))->_pointers[_index + 1], _index + 1});
         _index = 0;
         while (!is_terminate_node()) {
             _path.push({&(*(_path.top().first))->_pointers[0], 0});
