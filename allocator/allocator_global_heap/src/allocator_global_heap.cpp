@@ -19,13 +19,12 @@ allocator_global_heap::allocator_global_heap(logger *logger): _logger(logger)
     size_t total_size = size + sizeof(size_t);
     void* raw_ptr = ::operator new(total_size);
     if (raw_ptr == nullptr) {
-        if (_logger)
-            _logger->error("bad alloc error occured");
+        if (_logger) _logger->error("bad alloc error occured");
         throw std::bad_alloc();
     }
-    auto meta_data = static_cast<size_t*>(raw_ptr);
-    *meta_data = size;
-    void* user_ptr = static_cast<void*>(meta_data + 1);
+    auto metadata = static_cast<size_t*>(raw_ptr);
+    *metadata = size;
+    void* user_ptr = static_cast<void*>(metadata + 1);
 
     if (_logger) {
         _logger->debug("do_allocate_sm" + std::to_string(size) + " bytes");
@@ -52,12 +51,11 @@ void allocator_global_heap::do_deallocate_sm(
         return;
     }
 
-    char* ptr = static_cast<char*>(at);
+    auto* ptr = static_cast<std::byte*>(at);
     ptr -= sizeof(size_t);
     size_t size_to_dealloc = *reinterpret_cast<size_t*>(ptr);
-    void* orig = static_cast<void*>(ptr);
-    ::operator delete(orig);
-
+    void* user_mem = static_cast<void*>(ptr);
+    ::operator delete(user_mem);
     if (_logger) {
         _logger->debug("do_deallocate_sm deallocated " + std::to_string(size_to_dealloc) + " bytes");
         _logger->trace("do_deallocate_sm deallocated " + std::to_string(size_to_dealloc) + " bytes");
