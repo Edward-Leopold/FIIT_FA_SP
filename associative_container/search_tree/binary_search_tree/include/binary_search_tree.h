@@ -362,6 +362,9 @@ public:
         bool operator!=(
                 infix_iterator const &other) const noexcept;
 
+        bool operator==(infix_const_iterator const &other) const noexcept;
+        bool operator!=(infix_const_iterator const &other) const noexcept;
+
         infix_const_iterator &operator++() & noexcept;
 
         infix_const_iterator operator++(int not_used) noexcept;
@@ -1569,6 +1572,19 @@ bool binary_search_tree<tkey, tvalue, compare, tag>::infix_const_iterator::opera
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
+bool binary_search_tree<tkey, tvalue, compare, tag>::infix_const_iterator::operator!=(infix_const_iterator const &other) const noexcept
+{
+    return _base != other._base;
+}
+
+template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
+bool binary_search_tree<tkey, tvalue, compare, tag>::infix_const_iterator::operator==(infix_const_iterator const &other) const noexcept
+{
+    return _base == other._base;
+}
+
+
+template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
 typename binary_search_tree<tkey, tvalue, compare, tag>::infix_const_iterator &
 binary_search_tree<tkey, tvalue, compare, tag>::infix_const_iterator::operator++() & noexcept
 {
@@ -2417,7 +2433,7 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert(const value_type& value)
     }
 
     // Создаём ноду через аллокатор
-    node* new_node = _allocator.template new_object<node>(parent, value);
+    node* new_node = __detail::bst_impl<tkey, tvalue, compare, tag>::create_node(*this, parent, value);
 
     if (_root == nullptr) {
         _root = new_node;
@@ -2426,7 +2442,6 @@ binary_search_tree<tkey, tvalue, compare, tag>::insert(const value_type& value)
     } else {
         parent->right_subtree = new_node;
     }
-
     ++_size;
 
     __detail::bst_impl<tkey, tvalue, compare, tag>::post_insert(*this, &new_node);
@@ -3208,57 +3223,50 @@ binary_search_tree<tkey, tvalue, compare, tag>::crend_postfix() const noexcept
 //region subtree rotations implementation
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
-void binary_search_tree<tkey, tvalue, compare, tag>::small_left_rotation(node *&subtree_root) noexcept
-{
-    if (subtree_root == nullptr) return;
-    if (subtree_root->right_subtree == nullptr) return;
-    node* new_root = subtree_root->right_subtree;
+void binary_search_tree<tkey, tvalue, compare, tag>::small_left_rotation(node*& subtree_root) noexcept {
+    if (subtree_root == nullptr || subtree_root->right_subtree == nullptr) return;
 
+    node* new_root = subtree_root->right_subtree;
     subtree_root->right_subtree = new_root->left_subtree;
+
     if (new_root->left_subtree) new_root->left_subtree->parent = subtree_root;
 
-    if (subtree_root->parent) { // subtree have parent
-        new_root->parent = subtree_root->parent;
-        if (subtree_root == subtree_root->parent->left_subtree) {
-            subtree_root->parent->left_subtree = new_root;
-        } else {
-            subtree_root->parent->right_subtree = new_root;
-        }
-    } else { // no parent (root)
-        new_root->parent = nullptr;
-        // _root = new_root;
-    }
-
+    node* original_parent = subtree_root->parent;
     new_root->left_subtree = subtree_root;
     subtree_root->parent = new_root;
+    new_root->parent = original_parent;
+
+    if (original_parent) {
+        if (subtree_root == original_parent->left_subtree) {
+            original_parent->left_subtree = new_root;
+        } else {
+            original_parent->right_subtree = new_root;
+        }
+    }
 
     subtree_root = new_root;
 }
 
 template<typename tkey, typename tvalue, compator<tkey> compare, typename tag>
-void binary_search_tree<tkey, tvalue, compare, tag>::small_right_rotation(node *&subtree_root) noexcept
-{
-    if (subtree_root == nullptr) return;
-    if (subtree_root->left_subtree == nullptr) return;
-    node* new_root = subtree_root->left_subtree;
+void binary_search_tree<tkey, tvalue, compare, tag>::small_right_rotation(node*& subtree_root) noexcept {
+    if (subtree_root == nullptr || subtree_root->left_subtree == nullptr) return;
 
+    node* new_root = subtree_root->left_subtree;
     subtree_root->left_subtree = new_root->right_subtree;
     if (new_root->right_subtree) new_root->right_subtree->parent = subtree_root;
 
-    if (subtree_root->parent) { // subtree have parent
-        new_root->parent = subtree_root->parent;
-        if (subtree_root == subtree_root->parent->left_subtree) {
-            subtree_root->parent->left_subtree = new_root;
-        } else {
-            subtree_root->parent->right_subtree = new_root;
-        }
-    } else { // no parent (root)
-        new_root->parent = nullptr;
-        // _root = new_root;
-    }
-
+    node* original_parent = subtree_root->parent;
     new_root->right_subtree = subtree_root;
     subtree_root->parent = new_root;
+    new_root->parent = original_parent;
+
+    if (original_parent) {
+        if (subtree_root == original_parent->left_subtree) {
+            original_parent->left_subtree = new_root;
+        } else {
+            original_parent->right_subtree = new_root;
+        }
+    }
 
     subtree_root = new_root;
 }
