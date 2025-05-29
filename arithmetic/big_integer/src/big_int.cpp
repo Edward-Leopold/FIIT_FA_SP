@@ -573,7 +573,6 @@ big_int &big_int::divide_assign(const big_int &other, division_rule rule) & {
 big_int &big_int::modulo_assign(const big_int &other, division_rule rule) & {
 	if (is_zero(_digits)) return *this;
 	if (is_zero(other._digits)) throw std::logic_error("Division by zero");
-	if (other._sign == true && other._digits.size() == 1 && other._digits[0] == 1) return *this;
 
 	big_int abs_this = *this;
 	abs_this._sign = true;
