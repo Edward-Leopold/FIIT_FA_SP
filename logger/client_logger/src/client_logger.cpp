@@ -16,7 +16,7 @@ logger& client_logger::log(
 
     auto iter = _output_streams.find(severity);
     if (iter == _output_streams.end()) {
-        throw std::runtime_error("No such severity");
+        return *this;
     }
 
     const auto &file_streams = iter->second.first;
@@ -117,14 +117,14 @@ client_logger::~client_logger() noexcept
 
 client_logger::refcounted_stream::refcounted_stream(const std::string &path)
 {
-    std::cout << "stream path constructor: " << path << std::endl;
+    // std::cout << "stream path constructor: " << path << std::endl;
     _stream.first = path;
     _stream.second = nullptr;
 }
 
 client_logger::refcounted_stream::refcounted_stream(const client_logger::refcounted_stream &oth)
 {
-    std::cout << "stream copy constructor: " << oth._stream.first << std::endl;
+    // std::cout << "stream copy constructor: " << oth._stream.first << std::endl;
     auto it = _global_streams.find(oth._stream.first);
     if (it == _global_streams.end()){
         std::ofstream out;
@@ -147,7 +147,7 @@ client_logger::refcounted_stream::refcounted_stream(const client_logger::refcoun
 client_logger::refcounted_stream &
 client_logger::refcounted_stream::operator=(const client_logger::refcounted_stream &oth)
 {
-    std::cout << "stream assign copy constructor: " << oth._stream.first << std::endl;
+    // std::cout << "stream assign copy constructor: " << oth._stream.first << std::endl;
     if (this != &oth) {
         _global_streams.at(_stream.first).first--;
         if (_global_streams.at(_stream.first).first == 0) {
@@ -179,7 +179,7 @@ client_logger::refcounted_stream &client_logger::refcounted_stream::operator=(cl
 
 client_logger::refcounted_stream::~refcounted_stream()
 {
-    std::cout << "stream destructor: " << _stream.first << std::endl;
+    // std::cout << "stream destructor: " << _stream.first << std::endl;
     if (_stream.second) {
         _global_streams.at(_stream.first).first--;
         if (_global_streams.at(_stream.first).first == 0) {

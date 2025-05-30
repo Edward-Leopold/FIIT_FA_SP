@@ -3,27 +3,27 @@
 logger::severity logger_builder::string_to_severity(
     std::string const &severity_string)
 {
-    if (severity_string == "TRACE")
+    if (severity_string == "TRACE" || severity_string == "trace")
     {
         return logger::severity::trace;
     }
-    if (severity_string == "DEBUG")
+    if (severity_string == "DEBUG" || severity_string == "debug")
     {
         return logger::severity::debug;
     }
-    if (severity_string == "INFORMATION")
+    if (severity_string == "INFORMATION" || severity_string == "information")
     {
         return logger::severity::information;
     }
-    if (severity_string == "WARNING")
+    if (severity_string == "WARNING" || severity_string == "warning")
     {
         return logger::severity::warning;
     }
-    if (severity_string == "ERROR")
+    if (severity_string == "ERROR" || severity_string == "error")
     {
         return logger::severity::error;
     }
-    if (severity_string == "CRITICAL")
+    if (severity_string == "CRITICAL" || severity_string == "critical")
     {
         return logger::severity::critical;
     }

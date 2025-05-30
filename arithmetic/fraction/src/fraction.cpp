@@ -324,12 +324,11 @@ fraction fraction::ln(fraction const &epsilon) const {
 	fraction sum = tmp;
 	int dem = 1;
 
-	while (true) {
+	fraction delta = epsilon * epsilon;
+	while (delta > epsilon) {
 		tmp *= y_squard;
 		dem += 2;
-		fraction delta = tmp / fraction(dem, 1);
-		if (delta <= epsilon) break;
-
+		delta = tmp / fraction(dem, 1);
 		sum += delta;
 	}
 
