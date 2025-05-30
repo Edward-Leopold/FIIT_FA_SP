@@ -37,7 +37,7 @@ TEST(positiveTests, test1)
                 logger::severity::information
             }
         }));
-    std::unique_ptr<smart_mem_resource> allocator_instance(new allocator_buddies_system(12, nullptr, logger_instance.get(), allocator_with_fit_mode::fit_mode::first_fit));
+    std::unique_ptr<smart_mem_resource> allocator_instance(new allocator_buddies_system(4096, nullptr, logger_instance.get(), allocator_with_fit_mode::fit_mode::first_fit));
     
     auto actual_blocks_state = dynamic_cast<allocator_test_utils *>(allocator_instance.get())->get_blocks_info();
     std::vector<allocator_test_utils::block_info> expected_blocks_state
@@ -61,7 +61,7 @@ TEST(positiveTests, test23)
                 logger::severity::information
             }
         }));
-    std::unique_ptr<smart_mem_resource> allocator_instance(new allocator_buddies_system(8, nullptr, logger_instance.get(), allocator_with_fit_mode::fit_mode::first_fit));
+    std::unique_ptr<smart_mem_resource> allocator_instance(new allocator_buddies_system(256, nullptr, logger_instance.get(), allocator_with_fit_mode::fit_mode::first_fit));
     
     void *first_block = allocator_instance->allocate(sizeof(unsigned char) * 40);
     
@@ -84,7 +84,7 @@ TEST(positiveTests, test23)
 
 TEST(positiveTests, test3)
 {
-    std::unique_ptr<smart_mem_resource> allocator_instance(new allocator_buddies_system(8, nullptr, nullptr, allocator_with_fit_mode::fit_mode::first_fit));
+    std::unique_ptr<smart_mem_resource> allocator_instance(new allocator_buddies_system(256, nullptr, nullptr, allocator_with_fit_mode::fit_mode::first_fit));
     
     void *first_block = allocator_instance->allocate(sizeof(unsigned char) * 0);
     void *second_block = allocator_instance->allocate(sizeof(unsigned char) * 0);
@@ -130,7 +130,7 @@ TEST(positiveTests, test53)
                                                             }
                                                     }));
 
-    std::unique_ptr<smart_mem_resource> alloc(new allocator_buddies_system(12, nullptr, logger_instance.get(),
+    std::unique_ptr<smart_mem_resource> alloc(new allocator_buddies_system(4096, nullptr, logger_instance.get(),
                                                                allocator_with_fit_mode::fit_mode::first_fit));
 
     auto first_block = reinterpret_cast<int *>(alloc->allocate(sizeof(int) * 250));
