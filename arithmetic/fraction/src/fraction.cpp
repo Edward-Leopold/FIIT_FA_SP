@@ -294,19 +294,19 @@ fraction fraction::root(size_t degree, fraction const &epsilon) const {
 	fraction x = *this;
 	if (x._numerator < 0) x = -x;
 
-	fraction guess = *this / fraction(degree, 1);
-	fraction prev_guess;
+	fraction cur = *this / fraction(degree, 1);
+	fraction prev;
 	do {
-		prev_guess = guess;
-		fraction power = guess.pow(degree - 1);
+		prev = cur;
+		fraction power = cur.pow(degree - 1);
 		if (power._numerator == 0) throw std::logic_error("division by zero in root calculation");
 
-		guess = (fraction(degree - 1, 1) * guess + *this / power) / fraction(degree, 1);
-	} while ((guess - prev_guess > epsilon) || (prev_guess - guess > epsilon));
+		cur = (fraction(degree - 1, 1) * cur + *this / power) / fraction(degree, 1);
+	} while ((cur - prev > epsilon) || (prev - cur > epsilon));
 
-	if (_numerator < 0 && degree % 2 == 1) guess = -guess;
+	if (_numerator < 0 && degree % 2 == 1) cur = -cur;
 
-	return guess;
+	return cur;
 }
 
 fraction fraction::log2(fraction const &epsilon) const {
@@ -320,20 +320,20 @@ fraction fraction::ln(fraction const &epsilon) const {
 
 	fraction y = (*this - fraction(1, 1)) / (*this + fraction(1, 1));
 	fraction y_squard = y * y;
-	fraction term = y;
-	fraction sum = term;
+	fraction tmp = y;
+	fraction sum = tmp;
 	int dem = 1;
 
 	while (true) {
-		term *= y_squard;
+		tmp *= y_squard;
 		dem += 2;
-		fraction delta = term / fraction(dem, 1);
+		fraction delta = tmp / fraction(dem, 1);
 		if (delta <= epsilon) break;
 
 		sum += delta;
 	}
 
-	return sum + fraction(2, 1);
+	return sum * fraction(2, 1);
 }
 
 fraction fraction::lg(fraction const &epsilon) const {
