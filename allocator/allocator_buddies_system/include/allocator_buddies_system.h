@@ -104,27 +104,27 @@ private:
 
     inline std::mutex& get_mutex();
 
-    [[nodiscard]] inline std::string get_typename() const override;
+    inline std::string get_typename() const override;
 
     inline static size_t get_block_size(void* ptr);
 
     inline static bool is_block_occupied(void* ptr);
 
-    [[nodiscard]] inline size_t get_global_size() const;
+    inline size_t get_global_size() const;
 
-    [[nodiscard]] inline fit_mode get_fit_mode() const;
+    inline fit_mode get_fit_mode() const;
 
-    [[nodiscard]] inline std::pmr::memory_resource* get_parent_allocator() const;
+    inline std::pmr::memory_resource* get_parent_allocator() const;
 
-    [[nodiscard]] void* allocate_first_fit(size_t need_size) const noexcept;
+    void* allocate_first_fit(size_t need_size) const noexcept;
 
-    [[nodiscard]] void* allocate_best_first(size_t need_size) const noexcept;
+    void* allocate_best_first(size_t need_size) const noexcept;
 
-    [[nodiscard]] void* allocate_worst_fit(size_t need_size) const noexcept;
+    void* allocate_worst_fit(size_t need_size) const noexcept;
 
-    [[nodiscard]] std::vector<allocator_test_utils::block_info> get_blocks_info_inner() const override;
+    std::vector<allocator_test_utils::block_info> get_blocks_info_inner() const override;
 
-    [[nodiscard]] std::string fit_mode_to_string(fit_mode mode) const;
+    std::string fit_mode_to_string(fit_mode mode) const;
 
     void* allocate_with_mode(size_t size);
 
@@ -136,7 +136,7 @@ private:
 
     void* get_buddy(void* ptr);
 
-    [[nodiscard]] std::byte* get_first_block() const;
+    std::byte* get_first_block() const;
 
     bool can_split_block(void* ptr, size_t need_size) const;
 

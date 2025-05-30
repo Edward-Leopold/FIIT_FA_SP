@@ -268,7 +268,7 @@ allocator_buddies_system::get_string_info(const std::vector<allocator_test_utils
     std::ostringstream result;
     result << "| ";
     for (auto& current_block: info) {
-        result << (current_block.is_block_occupied ? "<occup>" : "<avail>");
+        result << (current_block.is_block_occupied ? "<block availability>" : "<block size>");
         result << " < " + std::to_string(current_block.block_size) + " > | ";
     }
     return result.str();
