@@ -1,217 +1,184 @@
-// b_tree_disk_tests.cpp
-
 #include "gtest/gtest.h"
+#include "b_tree_disk.hpp"
 #include <filesystem>
 #include <fstream>
-#include <vector>
-#include <optional>
-#include "b_tree_disk.hpp"
-#include <client_logger_builder.h>
 
+namespace fs = std::filesystem;
 
-struct SerializableInt {
-    int value;
-    SerializableInt() = default;
-    SerializableInt(int v): value(v) {}
-
-    void serialize(std::fstream& s) const {
-        s.write(reinterpret_cast<const char*>(&value), sizeof(value));
-    }
-    static SerializableInt deserialize(std::fstream& s) {
-        SerializableInt x;
-        s.read(reinterpret_cast<char*>(&x.value), sizeof(x.value));
-        return x;
-    }
-    size_t serialize_size() const {
-        return sizeof(value);
-    }
-    bool operator==(SerializableInt const& o) const { return value == o.value; }
-};
-
-struct SerializableString {
-    std::string value;
-    SerializableString() = default;
-    SerializableString(std::string v): value(std::move(v)) {}
-
-    void serialize(std::fstream& s) const {
-        size_t len = value.size();
-        s.write(reinterpret_cast<const char*>(&len), sizeof(len));
-        s.write(value.data(), len);
-    }
-    static SerializableString deserialize(std::fstream& s) {
-        SerializableString x;
-        size_t len;
-        s.read(reinterpret_cast<char*>(&len), sizeof(len));
-        x.value.resize(len);
-        s.read(x.value.data(), len);
-        return x;
-    }
-    size_t serialize_size() const {
-        return sizeof(size_t) + value.size();
-    }
-    bool operator==(SerializableString const& o) const { return value == o.value; }
-};
-
-struct IntCmp {
-    bool operator()(const SerializableInt& a, const SerializableInt& b) const {
-        return a.value < b.value;
-    }
-};
-
-template<typename Tree>
-std::vector<std::pair<int, std::string>> collect_all(Tree &tree) {
-    std::vector<std::pair<int, std::string>> res;
-    auto end_it = tree.end();
-    for (auto it = tree.begin(); it != end_it; ++it) {
-        auto [k, v] = *it;
-        res.emplace_back(k.value, v.value);
-    }
-    return res;
-}
-
+template<typename tkey, typename tvalue>
 bool compare_results(
-    const std::vector<std::pair<int, std::string>>& expected,
-    const std::vector<std::pair<int, std::string>>& actual)
-{
+    const std::vector<std::pair<tkey, tvalue> > &expected,
+    const std::vector<std::pair<tkey, tvalue> > &actual) {
     if (expected.size() != actual.size()) return false;
     for (size_t i = 0; i < expected.size(); ++i) {
-        if (expected[i] != actual[i]) return false;
+        if (expected[i].first != actual[i].first || expected[i].second != actual[i].second) {
+            return false;
+        }
     }
     return true;
 }
 
-void cleanup_files(std::string base) {
-    std::filesystem::remove(base + ".tree");
-    std::filesystem::remove(base + ".data");
-}
+class BTreeDiskTest : public ::testing::Test {
+protected:
+    std::string test_file;
 
-logger *create_logger(
-    std::vector<std::pair<std::string, logger::severity>> const &output_file_streams_setup,
-    bool use_console_stream = true,
-    logger::severity console_stream_severity = logger::severity::debug)
-{
-    std::unique_ptr<logger_builder> builder(new client_logger_builder());
-
-    if (use_console_stream)
-    {
-        builder->add_console_stream(console_stream_severity);
+    void SetUp() override {
+        // test_file должен быть установлен в каждом тесте до вызова SetUp
+        // fs::remove(test_file + ".tree");
+        // fs::remove(test_file + ".data");
     }
 
-    for (auto &output_file_stream_setup: output_file_streams_setup)
-    {
-        builder->add_file_stream(output_file_stream_setup.first, output_file_stream_setup.second);
+    void TearDown() override {
+        // fs::remove(test_file + ".tree");
+        // fs::remove(test_file + ".data");
     }
-
-    logger *built_logger = builder->build();
-
-    return built_logger;
-}
-
-template <typename tkey, typename tvalue>
-struct test_data
-{
-    tkey key;
-    tvalue value;
-    size_t depth, index;
-
-    test_data(int depth_, int index_, tkey key_, tvalue value_)
-        : depth(depth_), index(index_), key(std::move(key_)), value(std::move(value_)) {}
-
-    test_data(size_t d, size_t i, tkey k, tvalue v) : depth(d), index(i), key(k), value(v) {}
 };
 
-template<typename Tree>
-bool infix_const_iterator_test(
-    Tree &tree,
-    const std::vector<test_data<typename Tree::key_type, typename Tree::value_type>> &expected_result)
-{
-    auto it = tree.begin();
-    auto end = tree.end();
+TEST_F(BTreeDiskTest, InsertAndFind) {
+    test_file = "test_tree_insert";
+    fs::remove(test_file + ".tree");
+    fs::remove(test_file + ".data");
+    B_tree_disk<SerializableInt, SerializableString> tree(test_file);
 
-    for (const auto &item : expected_result)
+    EXPECT_TRUE(tree.insert({SerializableInt{1}, SerializableString{"a"}}));
+    EXPECT_TRUE(tree.insert({SerializableInt{2}, SerializableString{"b"}}));
+
+    auto val = tree.at(SerializableInt{1});
+    EXPECT_TRUE(val.has_value());
+    EXPECT_EQ(val.value().get(), "a");
+}
+
+TEST_F(BTreeDiskTest, RangeSearch) {
+    test_file = "test_tree_range";
+    fs::remove(test_file + ".tree");
+    fs::remove(test_file + ".data");
+    B_tree_disk<SerializableInt, SerializableString> tree(test_file);
+
+    tree.insert({SerializableInt{1}, SerializableString{"a"}});
+    tree.insert({SerializableInt{2}, SerializableString{"b"}});
+    tree.insert({SerializableInt{3}, SerializableString{"c"}});
+    tree.insert({SerializableInt{4}, SerializableString{"d"}});
+
+    auto [begin, end] = tree.find_range(SerializableInt{2}, SerializableInt{4});
+    std::vector<std::pair<SerializableInt, SerializableString> > result;
+    while (begin != end) {
+        result.push_back(*begin);
+        ++begin;
+    }
+
+    std::vector<std::pair<SerializableInt, SerializableString> > expected = {
+        {SerializableInt{2}, SerializableString{"b"}},
+        {SerializableInt{3}, SerializableString{"c"}},
+        {SerializableInt{4}, SerializableString{"d"}}
+    };
+
+    ASSERT_EQ(result.size(), expected.size());
+    for (size_t i = 0; i < expected.size(); ++i) {
+        EXPECT_EQ(result[i].first.data, expected[i].first.data);
+        EXPECT_EQ(result[i].second.data, expected[i].second.data);
+    }
+}
+
+TEST_F(BTreeDiskTest, Persistence) {
+    test_file = "test_tree_persistence";
+    fs::remove(test_file + ".tree");
+    fs::remove(test_file + ".data");
     {
-        if (it == end)
-            return false;
-
-        const auto &[k, v] = *it;
-
-        if (k.value != item.key || v.value != item.value || it.depth() != item.depth || it.index() != item.index)
-            return false;
-
-        ++it;
+        B_tree_disk<SerializableInt, SerializableString> tree(test_file);
+        tree.insert({SerializableInt{1}, SerializableString{"a"}});
+        tree.insert({SerializableInt{2}, SerializableString{"b"}});
     }
 
-    return it == end;
+    B_tree_disk<SerializableInt, SerializableString> tree1(test_file);
+
+    EXPECT_TRUE(tree1.at(SerializableInt{1}).has_value());
+    EXPECT_TRUE(tree1.at(SerializableInt{2}).has_value());
 }
 
+TEST_F(BTreeDiskTest, ComplexStructure) {
+    test_file = "test_tree_complex";
+    fs::remove(test_file + ".tree");
+    fs::remove(test_file + ".data");
+    B_tree_disk<SerializableString, SerializableString, std::less<SerializableString>, 3> tree(test_file);
 
-TEST(bTreeDiskPositiveTests, EmptyTree) {
-    const std::string path = "btree_disk_empty";
-    cleanup_files(path);
-
-    B_tree_disk<SerializableInt, SerializableString, IntCmp, 3> tree(path);
-
-    auto elements = collect_all(tree);
-
-    EXPECT_TRUE(elements.empty());
-}
-
-TEST(bTreeDiskPositiveTests, InfixIterationAndAt) {
-    const std::string path = "btree_disk_iter";
-    cleanup_files(path);
-
-    B_tree_disk<SerializableInt, SerializableString, IntCmp, 3> tree(path);
-
-    std::vector<std::pair<int, std::string>> to_insert = {
-        {1, "a"},
-        {2, "b"},
-        {15, "c"},
-        {3, "d"},
-        {4, "e"},
-        {27, "f"}
-    };
-    int i = 0;
-    for (auto &p : to_insert) {
-        printf(">>>%d<<<\n", i);
-        i++;
-        tree.insert({ SerializableInt(p.first), SerializableString(p.second) });
+    for (int i = 0; i < 100; ++i) {
+        tree.insert({SerializableString{std::to_string(i)}, SerializableString{"value_" + std::to_string(i)}});
     }
 
-    std::vector<std::pair<int, std::string>> expected = {
-        {1, "a"},
-        {2, "b"},
-        {3, "d"},
-        {4, "e"},
-        {15, "c"},
-        {27, "f"}
-    };
-
-    auto actual = collect_all(tree);
-
-    EXPECT_TRUE(compare_results(expected, actual));
-
-    auto found = tree.at(SerializableInt(15));
-
-    ASSERT_TRUE(found.has_value());
-    EXPECT_EQ(found->value, "c");
-
-    auto notfound = tree.at(SerializableInt(100));
-    EXPECT_FALSE(notfound.has_value());
+    for (int i = 0; i < 100; ++i) {
+        auto val = tree.at(SerializableString{std::to_string(i)});
+        EXPECT_TRUE(val.has_value());
+        EXPECT_EQ(val.value().get(), "value_" + std::to_string(i));
+    }
 }
 
-TEST(bTreeDiskNegativeTests, EraseNonexistent) {
-    const std::string path = "btree_disk_erase";
-    cleanup_files(path);
+TEST_F(BTreeDiskTest, EraseTest) {
+    test_file = "test_tree_erase";
+    fs::remove(test_file + ".tree");
+    fs::remove(test_file + ".data");
+    B_tree_disk<SerializableInt, SerializableString, std::less<SerializableInt>, 3> tree(test_file);
 
-    B_tree_disk<SerializableInt, SerializableString, IntCmp, 3> tree(path);
-    tree.insert({SerializableInt(1), SerializableString("a")});
-    tree.insert({SerializableInt(2), SerializableString("b")});
+    // 1. Insert test data
+    for (int i = 0; i < 50; i++) {
+        tree.insert({SerializableInt{i}, SerializableString{"value_" + std::to_string(i)}});
+    }
+    std::cout << "\n================= До удалений" << std::endl;
+    tree.print();
+    std::cout << "=================\n" << std::endl;
+    // 2. Test basic deletion from a leaf
+    EXPECT_TRUE(tree.erase(SerializableInt{20}));
+    EXPECT_FALSE(tree.at(SerializableInt{20}).has_value());
+    std::cout << "\n================= Попытался удалить 20" << std::endl;
+    tree.print();
+    std::cout << "=================\n" << std::endl;
+    // 3. Test deleting non-existent key - should return false
+    EXPECT_FALSE(tree.erase(SerializableInt{100}));
+    std::cout << "\n================= Попытался удалить 100" << std::endl;
+    tree.print();
+    std::cout << "=================\n" << std::endl;
+    // 4. Test deleting a key that causes rebalancing
+    // First verify the key exists
+    EXPECT_TRUE(tree.at(SerializableInt{5}).has_value());
+    EXPECT_TRUE(tree.erase(SerializableInt{5}));
+    EXPECT_FALSE(tree.at(SerializableInt{5}).has_value());
+    std::cout << "\n================= Попытался удалить 5" << std::endl;
+    tree.print();
+    std::cout << "=================\n" << std::endl;
+    // 5. Delete multiple keys to force tree restructuring
+    for (int i = 10; i < 15; i++) {
+        EXPECT_TRUE(tree.erase(SerializableInt{i}));
+        EXPECT_FALSE(tree.at(SerializableInt{i}).has_value());
+    }
+    std::cout << "\n================= Попытался удалить [10-15)" << std::endl;
+    tree.print();
+    std::cout << "=================\n" << std::endl;
+    std::cout << "\n=================" << std::endl;
+    tree.print();
+    std::cout << "=================\n" << std::endl;
+    // 6. Verify remaining keys still work
+    EXPECT_TRUE(tree.at(SerializableInt{}).has_value());
+    EXPECT_EQ(tree.at(SerializableInt{}).value().data, "value_0");
 
-    bool erased = tree.erase(SerializableInt(45));
-    EXPECT_FALSE(erased);
+    // 7. Delete the root key (if your tree structure allows identifying it)
+    int root_key = 15; // This assumes 15 is a key in the root node based on the query
+    EXPECT_TRUE(tree.erase(SerializableInt{root_key}));
+    std::cout << "\n================= Удалил 15" << std::endl;
+    tree.print();
+    std::cout << "=================\n" << std::endl;
+    EXPECT_FALSE(tree.at(SerializableInt{root_key}).has_value());
+}
+
+TEST_F(BTreeDiskTest, NegativeTest) {
+    test_file = "test_tree_negative";
+    fs::remove(test_file + ".tree");
+    fs::remove(test_file + ".data");
+    B_tree_disk<SerializableInt, SerializableString> tree(test_file);
+
+    EXPECT_FALSE(tree.erase(SerializableInt{42}));
+    EXPECT_FALSE(tree.at(SerializableInt{42}).has_value());
 }
 
 int main(int argc, char **argv) {
-    ::testing::InitGoogleTest(&argc, argv);
+    testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
